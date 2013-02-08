@@ -5,7 +5,7 @@
 #' @param Dat 	A data frame with the following columns:
 #' 		(1)transect ID; 
 #' 		(2)photo obtained (0/1) ? 
-#' 		(3) Observed species (integer - the max integer being 'unknown' if applicable) [NOTE: modeled as factor, but need to be input as integers to account for unknown species observations]
+#' 		(3) Observation type (integer - the max integer being 'unknown' if applicable) [NOTE: modeled as factor, but need to be input as integers to account for unknown species observations]
 #' 		(4-x)(Observer covariates); (things like survey conditions or observer skill that affect misID; things that don't change during a transect.  Note these also need to be provided in Obs.cov)
 #' 		(x+1-??)(Group size and other individual covariates thought to influence detection; if group size is one of them, it's assumed to be column x+1); could also include observer certainty here
 #' 		Note that column names can be used to tag covariates, and that object types (e.g. numeric, factor) will be preserved in analysis (note all covariates must be categorical right now!)
@@ -13,6 +13,8 @@
 #' @param Area.hab   A vector giving the area of each geographical strata (default is equal area)
 #' @param Mapping  A vector giving the habitat cell id number for each transect
 #' @param Area.trans	A vector giving the effective area covered by each transect as fraction of total area in the strata it is located
+#' @param DayHour A (n.transect X 2) matrix providing row and column entries into the Thin array. Each row corresponds to an entry in Mapping
+#' @param Thin An (n.species X n.days X n.hours X n.iter) array providing n.iter posterior samples of the thinning parameters
 #' @param Prop.photo A vector giving the proportion of of the area sampled in each transect that is photographed
 #' @param n.species An integer giving the true number of species
 #' @param n.obs.cov	Number of observer covariates (e.g., visibility, etc.)
@@ -41,6 +43,8 @@
 #' @param srr  If TRUE, uses spatially retricted regression, where smoothing occurs on residuals and all spatial effects are orthogonal to the linear predictors (by default, analysis is limited to the highest 50 eigenvalues of the decomposition of the residual projection matrix to reduce computing time)
 #' @param srr.tol Threshold eigenvalue level for SRR; only eigenvectors with higher eigenvalues than srr.tol are included in SRR formulation (default is 0.5)
 #' @param Psi An array holding posterior samples of the confusion matrix (dim = #species,#obs,#mcmc.iter)
+#' @param Thin An array holding posterior samples of thinning probabilities (dim = # species, # days surveyed, # hours in day, #iterations)
+#' @param Thin.pointer A matrix indicating which element of Thin each surveyed cell belongs to
 #' @param grps 	If FALSE, detections are assumed to all be of individual animals
 #' @param Control	A list object including the following objects:
 #'	"iter": number of MCMC iterations;
@@ -75,7 +79,7 @@
 #' @keywords areal model, data augmentation, distance sampling, mcmc, reversible jump
 #' @author Paul B. Conn \email{paul.conn@@noaa.gov} 
 #' @examples print("example analysis included in the script run_BOSS_sims.R")
-hierarchical_boss<-function(Dat,Adj,Area.hab=1,Mapping,Area.trans,Prop.photo=Prop.photo,Hab.cov,Obs.cov,Hab.pois.formula,Hab.bern.formula=NULL,Cov.prior.pdf,Cov.prior.parms,Cov.prior.fixed,Cov.prior.n,n.species=1,n.obs.cov=0,ZIP=FALSE,spat.ind=FALSE,fix.tau.nu=FALSE,srr=TRUE,srr.tol=0.5,Psi,Inits=NULL,grps=FALSE,M,Control,adapt=TRUE,Prior.pars,post.loss=TRUE){
+hierarchical_boss<-function(Dat,Adj,Area.hab=1,Mapping,Area.trans,DayHour,Thin,Prop.photo=Prop.photo,Hab.cov,Obs.cov,Hab.pois.formula,Hab.bern.formula=NULL,Cov.prior.pdf,Cov.prior.parms,Cov.prior.fixed,Cov.prior.n,n.species=1,n.obs.cov=0,ZIP=FALSE,spat.ind=FALSE,fix.tau.nu=FALSE,srr=TRUE,srr.tol=0.5,Psi,Inits=NULL,grps=FALSE,M,Control,adapt=TRUE,Prior.pars,post.loss=TRUE){
 	require(mvtnorm)
 	require(Matrix)
 	require(truncnorm)
@@ -87,7 +91,7 @@ hierarchical_boss<-function(Dat,Adj,Area.hab=1,Mapping,Area.trans,Prop.photo=Pro
 	S=length(Area.hab)
 	n.transects=length(Area.trans)
 	n.ind.cov=ncol(Dat)-(3+n.obs.cov) #number of individual covariates 
-  Obs.NArm=Dat[,"Species"][-which(is.na(Dat[,"Species"]))]
+  Obs.NArm=Dat[,3][-which(is.na(Dat[,3]))]
   n.obs.types=length(unique(Obs.NArm))
 	
 	#By no means exhaustive checking to make sure input values are internally consistent
@@ -266,7 +270,7 @@ hierarchical_boss<-function(Dat,Adj,Area.hab=1,Mapping,Area.trans,Prop.photo=Pro
 	Q=Matrix(Q)	
 
 	Meta=list(n.transects=n.transects,n.species=n.species,S=S,spat.ind=spat.ind,Area.hab=Area.hab,Area.trans=Area.trans,
-			Prop.photo=Prop.photo,Adj=Adj,Mapping=Mapping,Covered.area=Covered.area,
+      DayHour=DayHour,Thin=Thin,Prop.photo=Prop.photo,Adj=Adj,Mapping=Mapping,Covered.area=Covered.area,
 			factor.ind=factor.ind,Levels=Levels,misID=misID,
 			G.transect=G.transect,N.transect=N.transect,grps=grps,n.ind.cov=n.ind.cov,
 			Cov.prior.pdf=Cov.prior.pdf,Cov.prior.parms=Cov.prior.parms,Cov.prior.fixed=Cov.prior.fixed,Cov.prior.n=Cov.prior.n,ZIP=ZIP,fix.tau.nu=fix.tau.nu,

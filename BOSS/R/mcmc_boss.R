@@ -43,6 +43,8 @@
 #'  "spat.ind"		Indicator for spatial dependence
 #'  "Area.hab"		Vector giving relative area covered by each strata
 #'  "Area.trans"	Vector giving fraction of area of relevant strata covered by each transect
+#'  "DayHour" A (n.transect X 2) matrix providing row and column entries into the Thin array. Each row corresponds to an entry in Mapping
+#'  "Thin" An (n.species X n.days X n.hours X n.iter) array providing n.iter posterior samples of the thinning parameters
 #'  "Prop.photo"  Vector giving proportion of area in each transect that is photographed
 #' 	"Adj"			Adjacency matrix giving connectivity of spatial grid cells
 #'  "Mapping" 		Vector mapping each transect into a parent strata
@@ -83,6 +85,7 @@ mcmc_boss<-function(Par,Dat,Psi,cur.iter,adapt,Control,DM.hab.pois,DM.hab.bern=N
 	#require(Matrix)
 	#require(truncnorm)
  	Lam.index=c(1:Meta$S)
+  thin.pl=sample(c(1:dim(Meta$Thin)[4]),1)
 	grp.pl=NULL
 	if(Meta$grps==TRUE)grp.pl=which(colnames(Dat)=="Group")
   
@@ -113,12 +116,19 @@ mcmc_boss<-function(Par,Dat,Psi,cur.iter,adapt,Control,DM.hab.pois,DM.hab.bern=N
     }
   }
 
+  #declare index, function for accessing thinning probabilities for specific transects
+  Thin.pl=Meta$DayHour[,"day"]*(Meta$DayHour[,"hour"]-1)+Meta$DayHour[,"hour"]
+ 	get_thin<-function(Thin,Thin.pl,sp,iter){
+ 	  Tmp.thin=Thin[sp,,,iter][Thin.pl]
+ 	  Tmp.thin
+ 	} 
+    
 	#initialize lambda
 	Lambda=matrix(0,Meta$n.species,Meta$S)
 	Lambda.trans=matrix(0,Meta$n.species,Meta$n.transects)
 	for(isp in 1:Meta$n.species){
 		Lambda[isp,]=exp(Par$Nu[isp,])*Meta$Area.hab
-		Lambda.trans[isp,]=Lambda[isp,Meta$Mapping]*Meta$Area.trans
+		Lambda.trans[isp,]=Lambda[isp,Meta$Mapping]*Meta$Area.trans*get_thin(Meta$Thin,Thin.pl,isp,thin.pl)
 	}
 	grp.lam=rep(0,Meta$n.species)
 	
@@ -198,7 +208,7 @@ mcmc_boss<-function(Par,Dat,Psi,cur.iter,adapt,Control,DM.hab.pois,DM.hab.bern=N
     MCMC$Hab.bern=array(0,dim=c(Meta$n.species,mcmc.length,ncol(Par$hab.bern)))
     MCMC$tau.eta.bern=matrix(0,Meta$n.species,mcmc.length)
   }
-	Accept=list(N=matrix(0,Meta$n.species,Meta$n.transects),Nu=matrix(0,Meta$n.species,n.unique),Psi=rep(0,Meta$n.transects))
+	Accept=list(N=matrix(0,Meta$n.species,Meta$n.transects),Nu=matrix(0,Meta$n.species,n.unique),Psi=0,thin=0)
 	Pred.N=array(0,dim=c(Meta$n.species,mcmc.length,Meta$n.transects))
 	Obs.N=Pred.N
 
@@ -280,11 +290,12 @@ mcmc_boss<-function(Par,Dat,Psi,cur.iter,adapt,Control,DM.hab.pois,DM.hab.bern=N
 		  Mu=DM.hab.pois[[isp]]%*%Hab.pois+Eta.pois
 		  G.sampled=rep(0,n.unique) #total number of groups currently in each sampled strata
 		  for(i in 1:Meta$n.transects)G.sampled[Sampled==Meta$Mapping[i]]=G.sampled[Sampled==Meta$Mapping[i]]+Meta$G.transect[isp,i]
+		  Cur.thin=get_thin(Meta$Thin,Thin.pl,isp,thin.pl)
       for(i in 1:n.unique){
         if(Z[isp,Sampled[i]]==1){
 		      prop=Par$Nu[isp,Sampled[i]]+runif(1,-Control$MH.nu[isp,i],Control$MH.nu[isp,i])				
-		      old.post=dnorm(Par$Nu[isp,Sampled[i]],Mu[Sampled[i]],1/sqrt(Par$tau.nu[isp]),log=TRUE)+dpois(G.sampled[i],Sampled.area.by.strata[i]*exp(Par$Nu[isp,Sampled[i]]),log=TRUE)
-		      new.post=dnorm(prop,Mu[Sampled[i]],1/sqrt(Par$tau.nu[isp]),log=TRUE)+dpois(G.sampled[i],Sampled.area.by.strata[i]*exp(prop),log=TRUE)
+		      old.post=dnorm(Par$Nu[isp,Sampled[i]],Mu[Sampled[i]],1/sqrt(Par$tau.nu[isp]),log=TRUE)+dpois(G.sampled[i],Sampled.area.by.strata[i]*exp(Par$Nu[isp,Sampled[i]])*Meta$Area.hab[Sampled[i]]*Cur.thin[i],log=TRUE)
+		      new.post=dnorm(prop,Mu[Sampled[i]],1/sqrt(Par$tau.nu[isp]),log=TRUE)+dpois(G.sampled[i],Sampled.area.by.strata[i]*exp(prop)*Meta$Area.hab[Sampled[i]]*Cur.thin[i],log=TRUE)
 		      if(runif(1)<exp(new.post-old.post)){
 		        Par$Nu[isp,Sampled[i]]=prop
 		        Accept$Nu[isp,i]=Accept$Nu[isp,i]+1
@@ -367,7 +378,7 @@ mcmc_boss<-function(Par,Dat,Psi,cur.iter,adapt,Control,DM.hab.pois,DM.hab.bern=N
 			#translate to lambda scale 
       Lambda[isp,]=exp(Par$Nu[isp,])*Meta$Area.hab  
 		  if(Meta$ZIP)Lambda[isp,]=Lambda[isp,]*Z[isp,] 
-			Lambda.trans[isp,]=Lambda[isp,Meta$Mapping]*Meta$Area.trans
+			Lambda.trans[isp,]=Lambda[isp,Meta$Mapping]*Meta$Area.trans*get_thin(Meta$Thin,Thin.pl,isp,thin.pl)
 
 			if(DEBUG==FALSE){
 				#update Betas for habitat relationships
@@ -476,9 +487,35 @@ mcmc_boss<-function(Par,Dat,Psi,cur.iter,adapt,Control,DM.hab.pois,DM.hab.bern=N
         Par$N[isp,Meta$Mapping[ipl]]=Par$N[isp,Meta$Mapping[ipl]]+Meta$N.transect[isp,ipl]
       }
     }		
-    
+
+		if(PROFILE==TRUE){
+		  cat(paste("Updating N,G ", (Sys.time()-st),'\n'))
+		  st=Sys.time()
+		}
 		#if(iiter==1568)cat("\n made it 3 \n")
-		
+    
+    ##### update thinning parameters in independence chain
+    old.post=0
+    new.post=0
+    new.ind=round(runif(1,0.5,dim(Thin)[4]+0.5))
+    for(isp in 1:Meta$n.species){
+		  G.sampled=rep(0,n.unique) #total number of groups currently in each sampled strata
+		  for(i in 1:Meta$n.transects)G.sampled[Sampled==Meta$Mapping[i]]=G.sampled[Sampled==Meta$Mapping[i]]+Meta$G.transect[isp,i]
+      Cur.thin=get_thin(Meta$Thin,Thin.pl,isp,thin.pl)
+      New.thin=get_thin(Meta$Thin,Thin.pl,isp,new.ind)
+      Cur.Z=Z[Sampled]
+      old.post=old.post+sum(dpois(G.sampled[Cur.Z==1],Lambda.trans[isp,Cur.Z==1],log=TRUE))
+      new.post=old.post+sum(dpois(G.sampled[Cur.Z==1],Lambda.trans[isp,Cur.Z==1]*New.thin[Cur.Z==1]/Cur.thin[Cur.Z==1],log=TRUE))
+    }
+    if(runif(1)<exp(new.post-old.post)){
+      Accept$thin=Accept$thin+1
+      thin.pl=new.ind
+    }
+		if(PROFILE==TRUE){
+		  cat(paste("Thinning pars: ", (Sys.time()-st),'\n'))
+		  st=Sys.time()
+		}
+    
     ##### update misID parameters in independence chain
     if(Meta$misID){
       Psi.prop=Psi[,,sample(dim(Psi)[3],1)]
@@ -488,7 +525,12 @@ mcmc_boss<-function(Par,Dat,Psi,cur.iter,adapt,Control,DM.hab.pois,DM.hab.bern=N
         Accept$Psi=Accept$Psi+1
       }
     }
-		
+
+		if(PROFILE==TRUE){
+		  cat(paste("misID pars: ", (Sys.time()-st),'\n'))
+		  st=Sys.time()
+		}
+    
 		#####update parameters of individual covariate distributions (if fixed=0)
     Cov.logL=Cov.logL*0
 		for(isp in 1:Meta$n.species){
