@@ -299,10 +299,7 @@ paste_fun=function(x)paste(x,2,sep='')
 colnames(Hab.cov2)=sapply(colnames(Hab.cov[,Which.numeric]),paste_fun)
 Hab.cov=cbind(Hab.cov,Hab.cov2)
 Hab.pois.formula=list("vector",n.species)
-for(i in 1:n.species)Hab.pois.formula[[i]]=~dist_mainland+dist_shelf+ice_conc+ice_conc2+dist_contour+dist_edge
-Hab.pois.formula[[1]]=~dist_shelf+dist_mainland+ice_conc+ice_conc2+dist_contour+dist_edge
-Hab.pois.formula[[2]]=~ice_conc+ice_conc2+Ecoregion
-Hab.pois.formula[[3]]=~dist_shelf+dist_mainland+ice_conc+ice_conc2+dist_contour+dist_edge
+for(i in 1:n.species)Hab.pois.formula[[i]]=~Ecoregion+ice_conc+ice_conc2
 Hab.bern.formula=c(~1,~1,~1,~1,~1)  #formula for Bernoulli part of ZIP model
 Cov.prior.parms=array(0,dim=c(n.species,2,1))
 Cov.prior.parms[,1,1]=0.1  
@@ -335,7 +332,7 @@ adapt=TRUE
 set.seed(8327329)   #chain1
 Out=hierarchical_boss(Dat=Dat,Adj=Adj,Area.hab=Area.hab,Mapping=Mapping,Area.trans=Area.trans,DayHour=DayHour,Thin=Thin,Prop.photo=Prop.photo,Hab.cov=Hab.cov,Obs.cov=Obs.cov,n.obs.cov=n.obs.cov,Hab.pois.formula=Hab.pois.formula,Hab.bern.formula=Hab.bern.formula,Cov.prior.pdf=Cov.prior.pdf,Cov.prior.parms=Cov.prior.parms,Cov.prior.fixed=Cov.prior.fixed,Cov.prior.n=Cov.prior.n,ZIP=ZIP,spat.ind=spat.ind,fix.tau.nu=fix.tau.nu,srr=srr,srr.tol=srr.tol,Inits=Inits,grps=grps,n.species=n.species,Control=Control,adapt=adapt,Prior.pars=Prior.pars,Psi=Psi,post.loss=post.loss)
 
-save(Out,file='USBering_spat0overd0.Rdat')
+save(Out,file='USBering_Eco.Rdat')
 
 plot_covar(DM=Out$DM.hab.pois,MCMC=Out$MCMC,Vars=c("ice_conc"),n.species=n.species,n.points=20,Sp.names=c("Bearded","Ribbon","Ringed","Spotted","Unknown"),const.tau=100,bern=FALSE)
 

@@ -1,0 +1,145 @@
+\documentclass[12pt,fleqn]{article}
+%\documentclass[12pt,a4paper]{article}
+\usepackage{natbib}
+\usepackage{lineno}
+%\usepackage{lscape}
+%\usepackage{rotating}
+%\usepackage{rotcapt, rotate}
+\usepackage{amsmath,epsfig,epsf,psfrag}
+\usepackage{setspace}
+\usepackage{ulem}
+\usepackage{xcolor}
+\usepackage[labelfont=bf,labelsep=period]{caption} %for making figure and table numbers bold
+%\usepackage{a4wide,amsmath,epsfig,epsf,psfrag}
+
+
+\def\be{{\ensuremath\mathbf{e}}}
+\def\bx{{\ensuremath\mathbf{x}}}
+\def\bX{{\ensuremath\mathbf{X}}}
+\def\bthet{{\ensuremath\boldsymbol{\theta}}}
+\newcommand{\VS}{V\&S}
+\newcommand{\tr}{\mbox{tr}}
+%\renewcommand{\refname}{\hspace{2.3in} \normalfont \normalsize LITERATURE CITED}
+%this tells it to put 'Literature Cited' instead of 'References'
+\bibpunct{(}{)}{,}{a}{}{;}
+\oddsidemargin 0.0in
+\evensidemargin 0.0in
+\textwidth 6.5in
+\headheight 0.0in
+\topmargin 0.0in
+\textheight=9.0in
+%\renewcommand{\tablename}{\textbf{Table}}
+%\renewcommand{\figurename}{\textbf{Figure}}
+\renewcommand{\em}{\it}
+
+\begin{document}
+
+\begin{center} \bf {\large ESTIMATING MULTI-SPECIES ABUNDANCE USING THERMAL VIDEO AND DIGITAL PHOTOGRAPHY: ICE-ASSOCIATED SEALS IN THE EASTERN BERING SEA}
+
+\vspace{0.7cm}
+Paul B. Conn$^{1*}$, Jay M. Ver Hoef$^1$, Brett T. McClintock$^1$, Erin E. Moreland$^1$, Josh M. London$^1$, Michael F. Cameron$^1$, and Peter L. Boveng$^1$
+\end{center}
+\vspace{0.5cm}
+
+\rm
+\small
+
+\it $^1$NOAA-NMFS, Alaska Fisheries Science Center, National Marine Mammal Laboratory, 7600 Sand Point Way NE, Seattle, WA, 98115, U.S.A.\\
+
+\rm \begin{flushleft}
+
+\raggedbottom
+
+\begin{center}
+Appendix S1: Gibbs sampling and full conditional distributions for estimating animal abundance
+from a combination of thermal imagery and digital photography
+\bigskip
+\end{center}
+
+We use a hybrid Metropolis-Gibbs sampler \citep[cf.][]{GelmanEtAl2004} to iteratively sample from full conditional distributions
+of model parameters.  For each iteration of the Markov chain, we sample full conditionals as follows (note that notation is defined in Table 1 of the article):
+
+\begin{enumerate}
+  \item Sample regression parameters describing species-landscape covariate relationships using
+  \begin{equation*}
+  [\boldsymbol{\beta}_s|\hdots]={\rm Normal}(({\bf X_s}^\prime {\bf X_s})^{-1}{\bf X_s}^\prime \boldsymbol{\nu}_s,(\tau_{\nu s}+\tau_\beta)^{-1}({\bf X}_s^\prime {\bf X})_s^{-1}).
+  \end{equation*}
+  This formulation implies an ${\rm MVN}({\bf 0},(\tau_\beta X_s^\prime X_s)^{-1})$ prior distribution
+  on regression parameters, where $\tau_\beta$ is a prior precision parameter (we set $\tau_\beta=0.01$ in subsequent applications). \\
+
+  \item Sample $\nu_{js}$ for sampled cells using a random walk Metropolis-Hastings step.  The full conditional
+  for this update is proportional to
+  \begin{equation*}
+  N({\bf X}_s \boldsymbol{\beta}_s + \boldsymbol{\eta},\tau_s^{-1})\times
+    {\rm Poisson}(G_{js}^{\rm obs};\lambda_{js}).
+  \end{equation*} 
+  A tuning phase can be employed to adapt the kernel for random walk proposals to be in the optimal [0.30,0.40] range \citep{GelmanEtAl2004}.
+  \\
+
+  \item Sample $\nu_{js}$ for unsampled cells directly as
+    $\boldsymbol{\nu}_{s} \sim N({\bf X}_s \boldsymbol{\beta}_s + \boldsymbol{\eta},\tau_s^{-1})$ \\
+
+  \item Update $\boldsymbol{\alpha}_s$ using a Gibbs step (recall that under dimension reduction, spatial random effects, $\boldsymbol{\eta}_s$, can be expressed as $\boldsymbol{\eta}_s={\bf K}\boldsymbol{\alpha}_s$).  Specifically, sample $\boldsymbol{\alpha}_s \sim {\rm MVN}(\boldsymbol{\mu}_s,\boldsymbol{\Sigma}_s)$, where $\boldsymbol{\Sigma}_s^{-1}={\bf K}^\prime {\bf K}\tau_{\nu s}+\tau_{\eta s}{\bf K}^\prime {\bf Q} {\bf K}$ and $\boldsymbol{\mu}_s=\boldsymbol{\Sigma}_s \tau_{\nu s} {\bf K}^\prime (\boldsymbol{\nu}_s - {\bf X}_s \boldsymbol{\beta}_s) $ \\
+
+  \item Update $\tau_{\eta s}$ using a Gibbs step, where
+  \begin{equation*}
+  \tau_{\eta s} \sim {\rm Gamma}(0.5m + a,0.5 \boldsymbol{\alpha}^\prime
+  {\bf K}^\prime {\bf Q} {\bf K}\boldsymbol{\alpha}+b).
+  \end{equation*}
+  This formulation implies that $\tau_{\eta s}$ has an ${\rm Gamma}(a,b)$ prior distribution. We set $a=1$ and $b=0.01$ in worked examples, which gives ample support to likely values (e.g. those in (0,500]) while maintaining an approximate uniform distribution near the origin. \\
+
+
+  \item If estimated, $\tau_{\nu s}$ can also be updated using a Gibbs step when assuming a conjugate
+      ${\rm Gamma}(a,b)$ prior.  The full conditional in this case is ${\rm Gamma}(0.5L+a,0.5 \boldsymbol{\Delta}_s^\prime \boldsymbol{\Delta}_s +b)$, where $\boldsymbol{\Delta}_s=\boldsymbol{\nu}_s-{\bf X}_s \boldsymbol{\beta}_s-\boldsymbol{\eta}_s$ \\
+
+  \item For hotspots with $I_{ij}=0$, simulate species from a categorical distribution with probabilities proportional to $\lambda_{js}$, $s \in [1,S]$.  Simulate individual covariates for these observations directly from $f(\boldsymbol{\theta}_s)$ \\
+
+  \item For hotspots with $I_{ij}=1$, update true species identity $S_{ij}$ using a Metropolis-Hastings step.  Species proposals are generated by sampling from $\rm{Uniform}\{1,2,\hdots,S\}$.  The full conditional distribution has contributions from the Poisson abundance model, the covariate model, and the species identification model.  Specifically, the full conditional distribution for species identity being $S_{ij}=s$ is proportional to
+      \begin{equation*}
+        \lambda_{js} \pi^{[O_{ij}|s]} \prod_k f_k(Z_{ijk} ; \boldsymbol{\theta}_s)
+      \end{equation*} \\
+
+  \item For each individual covariate, update parameters of covariate distributions.  For instance, if species $s$ group sizes are assumed to follow a zero-truncated ${\rm Poisson}(\theta_s)$ distribution (as we assume in worked examples), selection of a conjugate ${\rm Gamma}(a,b)$ prior distribution allows the parameter $\theta_s$ to be updated via a Gibbs step where
+       \begin{equation*}
+       \theta_s \sim {\rm Gamma}\left( \sum_j \sum_i \left[ Z_{ij1} I_{ij} -I_{ij} \right] + a,\sum_j \sum_i I_{ij} + b \right).
+       \end{equation*} \\
+       In worked examples we set $a=b=0.1$.
+
+  \item Update thinning parameters, $p_{js}$, using an independence chain.  Since there is little information to estimate these parameters from survey data, our strategy is to use posterior predictions from an auxiliary analysis as both a prior distribution and proposal distribution for ${\bf p}$ during abundance analysis (see e.g. \texttt{Example}).  We update the vector of thinning parameters using a Metropolis-Hastings step, with full conditional distribution proportional to \begin{equation*}
+      \prod_j \prod_s {\rm Poisson}(G_{js}^{\rm obs};A_j R_j p_{js} \exp(\nu_{js})).
+      \end{equation*} 
+      As proposals are iid, there is no need for tuning.\\
+
+  \item Update species misclassification parameters, $\boldsymbol{\pi}$ using an independence chain.  As with
+      updates of ${\bf p}$, we use an informative prior on $\boldsymbol{\pi}$ as the proposal distribution within a Metropolis-Hastings step.  The full conditional is then simply
+      \begin{equation*}
+        \prod_j \prod_s \prod_i (1-I_{ij})+I_{ij} \pi^{[O_{ij}|S_{ij}]}.
+      \end{equation*}
+          As proposals are iid, there is no need for tuning.
+\end{enumerate}
+
+We then compute posterior predictive loss for each model $m$ fit to the data as $D_m = G_m + P_m$,
+where $G_m$ is a measure of posterior loss and $P_m$ is a penalty for variance.
+For each model, we simulate $n$ replicate datasets by drawing from the joint posterior distribution and
+using the same set of distributional assumptions we used to estimate parameters.  We then compute
+\begin{equation*}
+   G_m = \sum_j \parallel {\bf O}_{j}^{\rm rep} - {\bf O}_j^{\rm obs} \parallel ^2,
+\end{equation*}
+where ${\bf O}_{j}$ gives a vector summarizing the total number of observations in cell $j$ that were
+ of each observation type; the superscript denotes whether the data were simulated ('rep') or observed
+ ('obs').
+
+A penalty for variance is then computed as
+\begin{equation*}
+   P_m = \sum_j \sum_k {\rm Var}(O_{jk}^{\rm rep}),
+\end{equation*}
+where variance is taken over simulation replicates and $k$ indexes observation type.
+
+\renewcommand{\refname}{Literature Cited}
+\bibliographystyle{JEcol}
+
+\bibliography{master_bib}
+
+\end{flushleft}
+\end{document}
+

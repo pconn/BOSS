@@ -27,8 +27,8 @@
 #'	"adapt": if adapt==TRUE, this gives the number of additional MCMC iterations should be performed to adapt MCMC proposals to optimal 
 #' 				ranges prior to final MCMC run; 
 #'	"MH.nu": MH tuning parameter for Nu parameters (Langevin-Hastings multivariate update);
-#' @param DM.pois.hab	A design matrix for the Poisson model for abundance intensity (log scale)
-#' @param DM.bern.hab If Meta$ZIP=TRUE, a design matrix for the Bernoulli zero model (probit scale)
+#' @param DM.hab.pois	A design matrix for the Poisson model for abundance intensity (log scale)
+#' @param DM.hab.bern If Meta$ZIP=TRUE, a design matrix for the Bernoulli zero model (probit scale)
 #' @param Q			An inverse precision matrix for the spatial ICAR process
 #' @param Prior.pars	A list object giving parameters of prior distribution.  Includes the following objects
 #'	"a.eta": alpha parameter for prior precision of spatial process (assumed Gamma(a.eta,b.eta))
@@ -94,10 +94,10 @@ mcmc_boss<-function(Par,Dat,Psi,cur.iter,adapt,Control,DM.hab.pois,DM.hab.bern=N
   n.obs=nrow(Dat)
 	g.tot.obs=colSums(Meta$G.transect) #total number of observations of animals seen at least once
 	n.obs.cov=ncol(Dat)-Meta$n.ind.cov-4
-  i.na=(sum(is.na(Dat[,"Species"]))>0)
-  if(i.na==0)Obs.NArm=Dat[,"Species"]
-  if(i.na==1)Obs.NArm=Dat[,"Species"][-which(is.na(Dat[,"Species"]))]
- 	n.obs.types=length(unique(Obs.NArm))
+  #i.na=(sum(is.na(Dat[,"Species"]))>0)
+  #if(i.na==0)Obs.NArm=Dat[,"Species"]
+  #if(i.na==1)Obs.NArm=Dat[,"Species"][-which(is.na(Dat[,"Species"]))]
+ 	n.obs.types=dim(Psi)[2]
  	
 	Z=matrix(1,Meta$n.species,Meta$S)  #need to define for non-ZIP models
   #in case of ZIP model, initialize Z, Z.tilde
@@ -117,7 +117,7 @@ mcmc_boss<-function(Par,Dat,Psi,cur.iter,adapt,Control,DM.hab.pois,DM.hab.bern=N
   }
 
   #declare index, function for accessing thinning probabilities for specific transects
-  Thin.pl=Meta$DayHour[,"day"]*(Meta$DayHour[,"hour"]-1)+Meta$DayHour[,"hour"]
+  Thin.pl=Meta$DayHour[,"day"]*(Meta$DayHour[,"hour"]-1)+Meta$DayHour[,"day"]
  	get_thin<-function(Thin,Thin.pl,sp,iter){
  	  Tmp.thin=Thin[sp,,,iter][Thin.pl]
  	  Tmp.thin
@@ -157,14 +157,20 @@ mcmc_boss<-function(Par,Dat,Psi,cur.iter,adapt,Control,DM.hab.pois,DM.hab.bern=N
 		cross.L.pois=L.t.pois
 		Theta.pois=L.t.pois
 		N.theta.pois=rep(0,Meta$n.species)
+		#arfun<-function(x,extra=NULL)as.vector(Omega%*%x)
 		for(isp in 1:Meta$n.species){
 			P.c=diag(Meta$S)-DM.hab.pois[[isp]]%*%solve(crossprod(DM.hab.pois[[isp]]),t(DM.hab.pois[[isp]]))
-			Omega=(P.c%*%Meta$Adj%*%P.c)*(Meta$S/sum(Meta$Adj))
+			Omega=Matrix((P.c%*%Meta$Adj%*%P.c)*(Meta$S/sum(Meta$Adj)))
 			Eigen=eigen(Omega)
-			if(max(Eigen$values)<Meta$srr.tol)cat(paste("\n Error: maximum eigenvalue (",max(Eigen$values),") < Meta$srr.tol; decrease srr.tol"))
-			Ind=which(Eigen$values>Meta$srr.tol)
-			L.t.pois[[isp]]=Eigen$vectors[,Ind]
-			cat(paste("\n",length(Ind)," eigenvectors selected for spatially restricted regression \n"))
+      if(Meta$srr.tol>1){ #in this case, the number of eigenvalues is preselected
+        L.t.pois[[isp]]=Eigen$vectors[,1:Meta$srr.tol]      
+      }
+			else{ #in this case, compute the number of eigenvalues > the threshold
+ 			  if(max(Eigen$values)<Meta$srr.tol)cat(paste("\n Error: maximum eigenvalue (",max(Eigen$values),") < Meta$srr.tol; decrease srr.tol"))
+			  Ind=which(Eigen$values>Meta$srr.tol)
+			  L.t.pois[[isp]]=Eigen$vectors[,Ind]
+			  cat(paste("\n",length(Ind)," eigenvectors selected for spatially restricted regression \n"))
+			}
 			L.pois[[isp]]=t(L.t.pois[[isp]])
 			Qt.pois[[isp]]=L.pois[[isp]]%*%Q%*%L.t.pois[[isp]]
 			cross.L.pois[[isp]]=L.pois[[isp]]%*%L.t.pois[[isp]]
@@ -246,7 +252,8 @@ mcmc_boss<-function(Par,Dat,Psi,cur.iter,adapt,Control,DM.hab.pois,DM.hab.bern=N
     Obs.det=matrix(0,Meta$n.transects,n.obs.types+1) #col=n.obs.types+1 is for hotspots w/o accompanying photographs
     Pred.det=array(0,dim=c(mcmc.length,Meta$n.transects,n.obs.types+1))
     for(iobs in 1:n.photo)Obs.det[Dat[Which.photo[iobs],"Transect"],Dat[Which.photo[iobs],"Obs"]]=Obs.det[Dat[Which.photo[iobs],"Transect"],Dat[Which.photo[iobs],"Obs"]]+Dat[Which.photo[iobs],"Group"]
-    Obs.det[,n.obs.types+1]=tabulate(Dat[Which.no.photo,"Transect"],nbins=n.transects)     
+    Obs.det[,n.obs.types+1]=tabulate(Dat[Which.no.photo,"Transect"],nbins=n.transects)    
+    apply_misID<-function(n,Cur.psi)rmultinom(1,n,prob=Cur.psi)  #define function for sampling observation types by transects
   }
 	
 	#initialize random effect matrices for individual covariates if required
@@ -362,6 +369,7 @@ mcmc_boss<-function(Par,Dat,Psi,cur.iter,adapt,Control,DM.hab.pois,DM.hab.bern=N
           }
 				}
 			}
+      
 			#update tau_nu	 (precision for Poisson overdispersion)
 			Mu=DM.hab.pois[[isp]]%*%Hab.pois+Par$Eta.pois[isp,]
 			if(Meta$fix.tau.nu==FALSE){
@@ -375,16 +383,16 @@ mcmc_boss<-function(Par,Dat,Psi,cur.iter,adapt,Control,DM.hab.pois,DM.hab.bern=N
 				st=Sys.time()
 			}
 
+		  if(DEBUG==FALSE){
+		    #update Betas for habitat relationships
+		    Par$hab.pois[isp,1:Meta$N.hab.pois.par[isp]]=rmvnorm(1,XpXinvXp.pois[[isp]]%*%(Par$Nu[isp,]-Par$Eta.pois[isp,]),XpXinv.pois[[isp]]/(Par$tau.nu[isp]+Prior.pars$beta.tau))
+		    if(Meta$ZIP)Par$hab.bern[isp,1:Meta$N.hab.bern.par[isp]]=rmvnorm(1,XpXinvXp.bern[[isp]]%*%(Z.tilde[isp,]-Par$Eta.bern[isp,]),XpXinv.bern[[isp]]/(1+Prior.pars$beta.tau))
+		  }
+		  
 			#translate to lambda scale 
       Lambda[isp,]=exp(Par$Nu[isp,])*Meta$Area.hab  
 		  if(Meta$ZIP)Lambda[isp,]=Lambda[isp,]*Z[isp,] 
 			Lambda.trans[isp,]=Lambda[isp,Meta$Mapping]*Meta$Area.trans*get_thin(Meta$Thin,Thin.pl,isp,thin.pl)
-
-			if(DEBUG==FALSE){
-				#update Betas for habitat relationships
-			  Par$hab.pois[isp,1:Meta$N.hab.pois.par[isp]]=rmvnorm(1,XpXinvXp.pois[[isp]]%*%(Par$Nu[isp,]-Par$Eta.pois[isp,]),XpXinv.pois[[isp]]/(Par$tau.nu[isp]+Prior.pars$beta.tau))
-        if(Meta$ZIP)Par$hab.bern[isp,1:Meta$N.hab.bern.par[isp]]=rmvnorm(1,XpXinvXp.bern[[isp]]%*%(Z.tilde[isp,]-Par$Eta.bern[isp,]),XpXinv.bern[[isp]]/(1+Prior.pars$beta.tau))
-			}
 		
 			if(PROFILE==TRUE){
 				cat(paste("Habitat vars, etc.: ", (Sys.time()-st),'\n'))
@@ -440,16 +448,6 @@ mcmc_boss<-function(Par,Dat,Psi,cur.iter,adapt,Control,DM.hab.pois,DM.hab.bern=N
 		#Poisson abundance model contributions (new state)
 		MH=MH+log(sapply(Index.misID,"get_mat_entries",Mat=Lambda.trans,Row=Prop.sp,Col=Dat[Which.photo[Which.sampled],"Transect"]))
 		Rsamp=runif(n.misID.updates)
-		#       if(iiter==1568){
-		#       cat("\n MH \n")
-		#       print(MH)
-		#       cat("\n Dat \n")
-		#       print(Dat[Which.photo[Which.sampled],])
-		#       cat("\n Prop.sp \n")
-		#       print(Prop.sp)
-		#       cat("\n Mapping \n")
-		#       print(Mapping)
-		#       }
 		for(isamp in 1:n.misID.updates){
 		  mh=MH[isamp]-log(Lambda.trans[Dat[Which.photo[Which.sampled[isamp]],"Species"],Dat[Which.photo[Which.sampled[isamp]],"Transect"]])
 		  if(Rsamp[isamp]<exp(mh)){
@@ -470,19 +468,13 @@ mcmc_boss<-function(Par,Dat,Psi,cur.iter,adapt,Control,DM.hab.pois,DM.hab.bern=N
     Dat2[,"Species"]=factor(Dat[,"Species"],levels=c(1:Meta$n.species))
     Meta$N.transect=xtabs(Group~Species+Transect,data=Dat2)
 
-		#if(iiter==1568){
-      #cat("\n Meta$N.transect \n")
-      #print(Meta$N.transect)
-      #cat("\n made it 2 \n")
-		#}
     for(isp in 1:Meta$n.species){
-      #if(iiter==1568)cat(paste("\n isp ",isp,'\n'))
       ########## update group abundance at strata level using most recent updates to covered area abundance
       Par$G[isp,]=rpois(Meta$S,Lambda[isp,]*(1-Meta$Covered.area))
+      Par$G[isp,Mapping]=Par$G[isp,Mapping]+rpois(Meta$n.transects,Meta$Covered.area[Mapping]*(1-get_thin(Meta$Thin,Thin.pl,isp,thin.pl)))
       grp.lam[isp]=ifelse(Meta$Cov.prior.pdf[isp,1] %in% c("pois1_ln","poisson_ln"),exp(Par$Cov.par[isp,1,1]+(Par$Cov.par[isp,2,1])^2/2),Par$Cov.par[isp,1,1])
       Par$N[isp,]=Par$G[isp,]+rpois(Meta$S,grp.lam[isp]*Par$G[isp,]) #add the Par$G since number in group > 0 
       for(ipl in 1:length(Meta$Mapping)){
-        #if(iiter==1568)cat(paste("\n ipl ",ipl,'\n'))
         Par$G[isp,Meta$Mapping[ipl]]=Par$G[isp,Meta$Mapping[ipl]]+Meta$G.transect[isp,ipl]
         Par$N[isp,Meta$Mapping[ipl]]=Par$N[isp,Meta$Mapping[ipl]]+Meta$N.transect[isp,ipl]
       }
@@ -492,7 +484,6 @@ mcmc_boss<-function(Par,Dat,Psi,cur.iter,adapt,Control,DM.hab.pois,DM.hab.bern=N
 		  cat(paste("Updating N,G ", (Sys.time()-st),'\n'))
 		  st=Sys.time()
 		}
-		#if(iiter==1568)cat("\n made it 3 \n")
     
     ##### update thinning parameters in independence chain
     old.post=0
@@ -599,48 +590,27 @@ mcmc_boss<-function(Par,Dat,Psi,cur.iter,adapt,Control,DM.hab.pois,DM.hab.bern=N
 				Temp.G=Meta$Area.hab[Meta$Mapping]*Meta$Area.trans*exp(rnorm(Meta$n.transects,(DM.hab.pois[[isp]]%*%Par$hab.pois[isp,1:Meta$N.hab.pois.par[isp]]+Par$Eta.pois[isp,])[Meta$Mapping],sqrt(1/Par$tau.nu[isp])))
         if(Meta$ZIP)Temp.G=Temp.G*rbern(Meta$n.transects,pnorm((DM.hab.bern[[isp]]%*%Par$hab.bern[isp,1:Meta$N.hab.bern.par[isp]]+Par$Eta.bern[isp,])[Meta$Mapping]))
         Pred.N[isp,(iiter-Control$burnin)/Control$thin,]=Temp.G+rpois(Meta$n.transects,grp.lam[isp]*Temp.G)	
-			}
-      
-			#if(Meta$post.loss){ #calculate observed counts of different detection types, initialize prediction arrays
-			#  Obs.det=matrix(0,Meta$n.transects,n.obs.types+1) #col=n.obs.types+1 is for hotspots w/o accompanying photographs
-			#  Pred.det=array(0,dim=c(mcmc.length,Meta$n.transects,n.obs.types+1))
-			#  for(iobs in 1:n.photo)Obs.det[Dat[Which.photo[iobs],"Transect"],Dat[Which.photo[iobs],"Obs"]]=Obs.det[Dat[Which.photo[iobs],"Transect"],Dat[Which.photo[iobs],"Obs"]]+Dat[Which.photo[iobs],"Group"]
-			#  Obs.det[,n.obs.types+1]=tabulate(Dat[Which.no.photo,"Transect"],nbins=n.transects)     
-			#}
-			
-       #posterior predictions of data given nu & misclassification parameters
+      }
+            
+       #posterior predictions of data given regression & misclassification parameters
 			if(Meta$post.loss){
-        Cur.G=matrix(rpois(Meta$n.species*Meta$n.transects,exp(Par$Nu[,Sampled])),Meta$n.species,Meta$n.transects)		
-        if(Meta$ZIP)Cur.G=Z[,Sampled]*Cur.G         
-        for(itrans in 1:Meta$n.transects){
-          for(isp in 1:Meta$n.species){
-            if(Cur.G[isp,itrans]>0){
-              Cur.dat=matrix(0,Cur.G[isp,itrans],ncol(Dat))
-              Cur.dat[,4]=isp
-              #fill observer covariates
-              if(n.obs.cov>0){
-                cat('Warning: Observer/survey level covariates not yet entirely implemented for BOSS surveys!!! \n') 
-              }
-              #sample from individual covariate distributions 
-              if(Meta$n.ind.cov>0){
-                for(icov in 1:Meta$n.ind.cov){
-                  #if(Meta$Cov.prior.pdf[isp,icov]=='poisson_ln' | Meta$Cov.prior.pdf[isp,icov]=='pois1_ln')cur.RE=rep(rnorm(Cur.G[isp,itrans],0,1),each=Meta$n.Observers[itrans])
-                  #else 
-                  cur.RE=0
-                  rsamp=switch_sample(n=Cur.G[isp,itrans],pdf=Meta$Cov.prior.pdf[isp,icov],cur.par=Par$Cov.par[isp,1:Meta$Cov.prior.n[isp,icov],icov],RE=cur.RE)
-                  Cur.dat[,4+n.obs.cov+icov]=rsamp
-                }
-              }
-              #could be sped up by using apply
-              for(iind in 1:Cur.G[isp,itrans]){
-                if(n.species>1)cur.obs=sample(n.obs.types,1,prob=Par$Psi[isp,])
-                else cur.obs=1
-                if(runif(1)<Prop.photo[itrans])Pred.det[(iiter-Control$burnin)/Control$thin,itrans,cur.obs]=Pred.det[(iiter-Control$burnin)/Control$thin,itrans,cur.obs]+1    
-                else Pred.det[(iiter-Control$burnin)/Control$thin,itrans,n.obs.types+1]=Pred.det[(iiter-Control$burnin)/Control$thin,itrans,n.obs.types+1]+1    
-              }           
-            }
+        for(isp in 1:Meta$n.species){
+          Hab.pois=Par$hab.pois[isp,1:Meta$N.hab.pois.par[isp]]
+          Eta.pois=Par$Eta.pois[isp,]
+          
+          Mu=DM.hab.pois[[isp]][Sampled,]%*%Par$hab.pois[isp,1:Meta$N.hab.pois.par[isp]]+Par$Eta.pois[isp,Sampled]
+			    Cur.lam=exp(rnorm(n.unique,Mu,1/sqrt(Par$tau.nu[isp])))*Meta$Area.hab[Sampled] 
+          if(Meta$ZIP){
+            Mu=DM.hab.bern[[isp]][Sampled,]%*%Par$hab.bern[isp,1:Meta$N.hab.bern.par[isp]]+Par$Eta.bern[isp,Sampled]
+			      Cur.lam=Cur.lam*(rnorm(n.unique,Mu,1)>0)
           }
-			  }
+			    Cur.lam=Cur.lam*Meta$Area.trans*get_thin(Meta$Thin,Thin.pl,isp,thin.pl)			  
+          Cur.G=rpois(Meta$n.transects,Cur.lam)
+          Cur.no.photo=rbinom(Meta$n.transects,Cur.G,Prop.photo)
+          Pred.det[(iiter-Control$burnin)/Control$thin,,n.obs.types+1]=Pred.det[(iiter-Control$burnin)/Control$thin,,n.obs.types+1]+Cur.no.photo
+          Cur.G=Cur.G-Cur.no.photo
+          Pred.det[(iiter-Control$burnin)/Control$thin,,1:n.obs.types]=Pred.det[(iiter-Control$burnin)/Control$thin,,1:n.obs.types]+t(sapply(Cur.G,"apply_misID",Cur.psi=Par$Psi[isp,]))
+        }
 			}	
 		}
 		
@@ -682,7 +652,8 @@ mcmc_boss<-function(Par,Dat,Psi,cur.iter,adapt,Control,DM.hab.pois,DM.hab.bern=N
   }
   if(n.species>1)Post$Psi=MCMC$Psi
 	MCMC=convert.BOSS.to.mcmc(MCMC=MCMC,N.hab.pois.par=Meta$N.hab.pois.par,N.hab.bern.par=N.hab.bern.par,Cov.par.n=Cov.par.n,Hab.pois.names=Hab.pois.names,Hab.bern.names=Hab.bern.names,Cov.names=Cov.names,fix.tau.nu=Meta$fix.tau.nu,spat.ind=Meta$spat.ind)
-	Out=list(Post=Post,MCMC=MCMC,Accept=Accept,Control=Control,Obs.N=Obs.N,Pred.N=Pred.N,Obs.det=Obs.det,Pred.det=Pred.det)
+  if(Meta$ZIP==FALSE)DM.hab.bern=NULL
+  Out=list(Post=Post,MCMC=MCMC,Accept=Accept,Control=Control,Obs.N=Obs.N,Pred.N=Pred.N,Obs.det=Obs.det,Pred.det=Pred.det,DM.hab.bern=DM.hab.bern,DM.hab.pois=DM.hab.pois,Hab.pois.names=Hab.pois.names,Hab.bern.names=Hab.bern.names)
 	Out
 }
 

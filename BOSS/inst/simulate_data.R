@@ -9,14 +9,15 @@
 simulate_BOSS<-function(S,prop.photo=1,n.sampled,misID=1,ZIP=TRUE,tau.pois=15,tau.bern=20){
   #note: currently hardwired for 4 species and an anomaly category
 	require(mvtnorm)
-  library(hierarchicalDS)
+  require(spatstat)
+	source('c:/users/paul.conn/git/hierarchicalDS/hierarchicalDS/R/spat_funcs.R')
 	#set.seed(122412)
   Sampled.cells=sample(S,n.sampled)
   Area=0.1 #proportion of each cell surveyed
   n.species=5
 	
   if((sqrt(S)%%1)!=0)cat("Error: S must be a square #")
-	Adj=square_adj(sqrt(S))
+	Adj=rect_adj_RW2(sqrt(S),sqrt(S))
 	Q=-Adj
 	diag(Q)=apply(Adj,2,'sum')
 	Q.pois=Matrix(tau.pois*Q)
@@ -36,13 +37,20 @@ simulate_BOSS<-function(S,prop.photo=1,n.sampled,misID=1,ZIP=TRUE,tau.pois=15,ta
 	
 	#process parameters
 	Lambda.grp=c(.1,.2,.3,.4,0)
-	X.site=cbind(rep(1,S),rep(log(c(1:sqrt(S)/sqrt(S))),each=sqrt(S))) #covariate on abundance intensity, sp 1
-	Beta.pois=matrix(0,5,2)
-  Beta.pois[1,]=c(log(39),1) 
-	Beta.pois[2,]=c(log(9),0)
-	Beta.pois[3,]=c(log(20),-1)
-	Beta.pois[4,]=c(log(10),0.5)
-	Beta.pois[5,]=c(log(15),0)
+	Dat.matern=rMatClust(kappa=12,r=.1,mu=100)
+	X=round((sqrt(S)+1)*Dat.matern$x-0.5)
+	Y=round((sqrt(S)+1)*Dat.matern$y-0.5)
+	Grid=matrix(0,sqrt(S),sqrt(S))
+	for(i in 1:length(X))Grid[X[i],Y[i]]=Grid[X[i],Y[i]]+1
+  X.cov=as.vector(Grid)/max(Grid)
+	
+	X.site=cbind(rep(1,S),rep(log(c(1:sqrt(S)/sqrt(S))),each=sqrt(S)),rep(log(c(1:sqrt(S)/sqrt(S)))),X.cov) #covariate on abundance intensity, sp 1
+  Beta.pois=matrix(0,5,4)
+  Beta.pois[1,]=c(log(39),1,1,0) 
+	Beta.pois[2,]=c(log(5),0,0,0)
+	Beta.pois[3,]=c(log(20),-.2,0,0)
+	Beta.pois[4,]=c(log(10),0,0,1)
+	Beta.pois[5,]=c(log(25),0,0,0)
   X.bern=matrix(1,S,1)
   Beta.bern=matrix(c(1,.5,0,.4,0),5,1)
   if(ZIP==FALSE)Beta.bern=matrix(10,5,1)
@@ -134,6 +142,6 @@ simulate_BOSS<-function(S,prop.photo=1,n.sampled,misID=1,ZIP=TRUE,tau.pois=15,ta
       if(Dat[i,2]==1)Dat[i,3]=sample(c(1:(3*(n.species+1))),1,prob=Psi[Dat[i,3],])
     }
 	}
-	Out=list(Dat=Dat,G.tot=G.tot,G.true=N,True.species=True.species,Sampled.cells=Sampled.cells,Psi=Psi)
+	Out=list(Dat=Dat,G.tot=G.tot,G.true=N,True.species=True.species,Sampled.cells=Sampled.cells,Psi=Psi,X=X.site)
 }
 

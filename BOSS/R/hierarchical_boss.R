@@ -239,9 +239,12 @@ hierarchical_boss<-function(Dat,Adj,Area.hab=1,Mapping,Area.trans,DayHour,Thin,P
 		}
 	}
 	#start Nu out at a compatible level
-  for(isp in 1:n.species)Par$Nu[isp,]=DM.hab.pois[[isp]]%*%Par$hab.pois[isp,1:N.hab.pois.par[isp]]
+  for(isp in 1:n.species){
+    if(ncol(Par$hab.pois)<ncol(DM.hab.pois[[isp]]))cat('Error: Abundance intensity model has parameter/formula mismatch')
+    Par$Nu[isp,]=DM.hab.pois[[isp]]%*%Par$hab.pois[isp,1:N.hab.pois.par[isp]]
+  }
   if(length(Par$tau.nu)!=n.species)cat('Error: length of initial value vector for tau.nu should be equal to # of species')
-
+  
 	#get initial individual covariate parameter values
 	Par$Cov.par=Cov.prior.parms 
 	for(i in 1:n.ind.cov){	
@@ -284,7 +287,7 @@ hierarchical_boss<-function(Dat,Adj,Area.hab=1,Mapping,Area.trans,DayHour,Thin,P
 	}
 	else{
 		cat('\n Beginning MCMC phase \n')
-		Out=mcmc_boss(Par=Par,Dat=Dat,,Psi=Psi,cur.iter=Control$iter,adapt=0,Control=Control,DM.hab.pois=DM.hab.pois,DM.hab.bern=DM.hab.bern,Q=Q,Prior.pars=Prior.pars,Meta=Meta)
+		Out=mcmc_boss(Par=Par,Dat=Dat,Psi=Psi,cur.iter=Control$iter,adapt=0,Control=Control,DM.hab.pois=DM.hab.pois,DM.hab.bern=DM.hab.bern,Q=Q,Prior.pars=Prior.pars,Meta=Meta)
 	}
 	Out	
 }
