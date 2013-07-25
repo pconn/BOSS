@@ -256,6 +256,7 @@ Psi[5,13,]=1
 rm(p13)
 #Do some cleaning up
 rm(Cert,Obs.cells,Diam,DT,effort_data,flight_segs,Flt.anal,Fl.table,Flt.ids,Flt.table,hotspots,Hour,hour.bar,Hour.trans,int,Photo,r,rn,nrn,Which.pts,Swath,Day,Cell.id,Tmp)
+rm(alpha.bar,Conv.poly,Cur.hour,Cur.dist,Cur.which,Date.lt,Flights,fun,Grp,I.intersects,i,I.no.survey,I.sampled,Length.df,Max.covs,min.ti,max.ti,out,Row.index,Sp,tmp.DayHour,Tmp.seal,Transects,vec,which.cell,Which.no,Which.no.survey,x.bar,y.bar,Mean.covs,Min.covs)
 
 library(hierarchicalDS)
 source('c:/users/paul.conn/git/BOSS/BOSS/R/util_funcs.R')
@@ -337,7 +338,9 @@ Out=hierarchical_boss(Dat=Dat,Adj=Adj,Area.hab=Area.hab,Mapping=Mapping,Area.tra
 
 save(Out,file='USBering_spat0overd0.Rdat')
 
-plot_covar(DM=Out$DM.hab.pois,MCMC=Out$MCMC,Vars=c("ice_conc"),n.species=n.species,n.points=20,Sp.names=c("Bearded","Ribbon","Ringed","Spotted","Unknown"),const.tau=100,bern=FALSE)
+pdf('ice_eff2.pdf')
+plot_covar(DM=Out$DM.hab.pois,MCMC=Out$MCMC,Vars=c("ice_conc"),n.species=n.species,n.points=20,Sp.names=c("Bearded","Ribbon","Ringed","Spotted","Other"),const.tau=100,bern=FALSE)
+dev.off()
 
 #Post hoc correction for density at sea concentration = 0; note: will need to adjust N in MCMC object too
 Out$Post$N[,,which(Hab.cov[,"ice_conc"]<.001)]=0
