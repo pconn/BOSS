@@ -334,7 +334,9 @@ Out=hierarchical_boss(Dat=Dat,Adj=Adj,Area.hab=Area.hab,Mapping=Mapping,Area.tra
 
 save(Out,file='USBering_Eco.Rdat')
 
-plot_covar(DM=Out$DM.hab.pois,MCMC=Out$MCMC,Vars=c("ice_conc"),n.species=n.species,n.points=20,Sp.names=c("Bearded","Ribbon","Ringed","Spotted","Unknown"),const.tau=100,bern=FALSE)
+pdf(file="ice_eff2.pdf")
+plot_covar(DM=Out$DM.hab.pois,MCMC=Out$MCMC,Vars=c("ice_conc"),n.species=n.species,n.points=20,Sp.names=c("Bearded","Ribbon","Ringed","Spotted","Other"),const.tau=100,bern=FALSE)
+dev.off()
 
 #Post hoc correction for density at sea concentration = 0; note: will need to adjust N in MCMC object too
 Out$Post$N[,,which(Hab.cov[,"ice_conc"]<.001)]=0

@@ -338,7 +338,7 @@ Out=hierarchical_boss(Dat=Dat,Adj=Adj,Area.hab=Area.hab,Mapping=Mapping,Area.tra
 
 save(Out,file='USBering_spat0overd0.Rdat')
 
-pdf('ice_eff2.pdf')
+png('ice_eff2.png')
 plot_covar(DM=Out$DM.hab.pois,MCMC=Out$MCMC,Vars=c("ice_conc"),n.species=n.species,n.points=20,Sp.names=c("Bearded","Ribbon","Ringed","Spotted","Other"),const.tau=100,bern=FALSE)
 dev.off()
 
@@ -350,10 +350,10 @@ if(limit.convex)Tmp.grid=Cur.grid[which(I.intersect==1),]
 N.tot=matrix(0,n.species,dim(Out$Post$N)[2])
 for(iiter in 1:dim(Out$Post$N)[2])N.tot[,iiter]=apply(Out$Post$N[,iiter,],1,'sum')
 par(mfrow=c(2,2))
-hist(N.tot[1,],main='bearded',xlab='',freq=FALSE,ylab='Posterior density')
-hist(N.tot[2,],main='ribbon',xlab='',freq=FALSE,ylab='Posterior density')
-hist(N.tot[3,],main='ringed',xlab='Abundance',freq=FALSE,ylab='Posterior density')
-hist(N.tot[4,],main='spotted',xlab='Abundance',freq=FALSE,ylab='Posterior density')
+hist(N.tot[1,],main='bearded',xlab='',freq=FALSE,ylab='Posterior density',cex.axis=1.3,cex.lab=1.3)
+hist(N.tot[2,],main='ribbon',xlab='',freq=FALSE,ylab='Posterior density',cex.axis=1.3,cex.lab=1.3)
+hist(N.tot[3,],main='ringed',xlab='Abundance',freq=FALSE,ylab='Posterior density',cex.axis=1.3,cex.lab=1.3)
+hist(N.tot[4,],main='spotted',xlab='Abundance',freq=FALSE,ylab='Posterior density',cex.axis=1.3,cex.lab=1.3)
  
 ###3) plot and summarize results; note that chain would need to be run a lot longer to summarize the posterior very well!!!
 #plot(Out$MCMC)
@@ -378,7 +378,7 @@ new.colnames=colnames(tmp2)
 new.colnames[1:2]=c("Easting","Northing")
 colnames(tmp2)=new.colnames
 #qplot(long, lat, data = tmp2, fill = bearded, geom = "raster")
-pdf(file="species_maps.pdf")
+png(file="species_maps.png")
 pushViewport(viewport(layout=grid.layout(3,2)))
 tmp.theme=theme(axis.ticks = element_blank(), axis.text = element_blank())
 p1=ggplot(tmp2)+aes(Easting,Northing,fill=bearded)+geom_raster()+tmp.theme
@@ -393,22 +393,22 @@ p5=ggplot(tmp2)+aes(Easting,Northing,fill=other)+geom_raster()+tmp.theme
 print(p5,vp=viewport(layout.pos.row=3,layout.pos.col=1))
 dev.off()
 
-pdf(file="covariates.pdf")
-pushViewport(viewport(layout=grid.layout(3,3)))
+png(file="covariates.png")
+pushViewport(viewport(layout=grid.layout(3,2)))
 p1=ggplot(tmp2)+aes(Easting,Northing,fill=dist_mainland)+geom_raster()+tmp.theme
 print(p1,vp=viewport(layout.pos.row=1,layout.pos.col=1))
 p2=ggplot(tmp2)+aes(Easting,Northing,fill=dist_shelf)+geom_raster()+tmp.theme
 print(p2,vp=viewport(layout.pos.row=1,layout.pos.col=2))
 p3=ggplot(tmp2)+aes(Easting,Northing,fill=ice_conc)+geom_raster()+tmp.theme
-print(p3,vp=viewport(layout.pos.row=1,layout.pos.col=3))
+print(p3,vp=viewport(layout.pos.row=2,layout.pos.col=1))
 p4=ggplot(tmp2)+aes(Easting,Northing,fill=dist_contour)+geom_raster()+tmp.theme
-print(p4,vp=viewport(layout.pos.row=2,layout.pos.col=1))
+print(p4,vp=viewport(layout.pos.row=2,layout.pos.col=2))
 p5=ggplot(tmp2)+aes(Easting,Northing,fill=dist_edge)+geom_raster()+tmp.theme
-print(p5,vp=viewport(layout.pos.row=2,layout.pos.col=2))
+print(p5,vp=viewport(layout.pos.row=3,layout.pos.col=1))
 p6=ggplot(tmp2)+aes(Easting,Northing,fill=Ecoregion)+geom_raster()+tmp.theme
-print(p6,vp=viewport(layout.pos.row=2,layout.pos.col=3))
-p7=ggplot(tmp2)+aes(Easting,Northing,fill=Ecoregion)+geom_raster()+tmp.theme
-print(p7,vp=viewport(layout.pos.row=3,layout.pos.col=1))
+print(p6,vp=viewport(layout.pos.row=3,layout.pos.col=2))
+#p7=ggplot(tmp2)+aes(Easting,Northing,fill=Ecoregion)+geom_raster()+tmp.theme
+#print(p7,vp=viewport(layout.pos.row=3,layout.pos.col=1))
 
 dev.off()
 #   pdf('dist_contour.pdf',height=2.9, width=5)    

@@ -1,0 +1,819 @@
+%  This document must be used with LaTeX 2e!!!
+
+%  See the documentation ``The biometrics class'' by
+%  Josephine Collis for more information
+
+%  Be sure to put the files biometrics.sty and biometrics.bst
+%  in the same directory as your latex file.  Also put the .bib
+%  file -- see below
+
+\documentclass[12pt,fleqn]{article}
+%\documentclass[12pt,a4paper]{article}
+\usepackage{natbib}
+\usepackage{lineno}
+%\usepackage{lscape}
+%\usepackage{rotating}
+%\usepackage{rotcapt, rotate}
+\usepackage{amsmath,epsfig,epsf,psfrag}
+\usepackage{setspace}
+\usepackage{ulem}
+\usepackage{xcolor,longtable}
+\usepackage[labelfont=bf,labelsep=period]{caption} %for making figure and table numbers bold
+%\usepackage{a4wide,amsmath,epsfig,epsf,psfrag}
+
+\def\be{{\ensuremath\mathbf{e}}}
+\def\bx{{\ensuremath\mathbf{x}}}
+\def\bthet{{\ensuremath\boldsymbol{\theta}}}
+%\newcommand{\VS}{V\&S}
+\newcommand{\tr}{\mbox{tr}}
+%\renewcommand{\refname}{\hspace{2.3in} \normalfont \normalsize LITERATURE CITED}
+%this tells it to put 'Literature Cited' instead of 'References'
+%\bibpunct{(}{)}{,}{a}{}{;}
+\oddsidemargin 0.0in
+\evensidemargin 0.0in
+\textwidth 6.5in
+\headheight 0.0in
+\topmargin 0.0in
+\textheight=9.0in
+%\renewcommand{\tablename}{\textbf{Table}}
+%\renewcommand{\figurename}{\textbf{Fig.}}
+\renewcommand{\em}{\it}
+
+\begin{document}
+
+\thispagestyle{empty}
+%  make sure that the document has 25 lines per page (it is 12 pt)
+
+%\setlength{\textheight}{575pt}
+\setlength{\baselineskip}{24pt}
+
+
+
+
+\vspace{2 mm}
+
+\begin{center} \bf {\large ESTIMATING MULTI-SPECIES ABUNDANCE USING AUTOMATED DETECTION SYSTEMS: ICE-ASSOCIATED SEALS IN THE BERING SEA}
+
+\vspace{0.7cm}
+Paul B. Conn$^{1,*}$, Jay M. Ver Hoef$^1$, Brett T. McClintock$^1$, Erin E. Moreland$^1$, Josh M. London$^1$, Michael F. Cameron$^1$, Shawn P. Dahle$^1$, and Peter L. Boveng$^1$
+\end{center}
+\vspace{0.5cm}
+
+\rm
+\small
+
+\it $^1$NOAA-NMFS, Alaska Fisheries Science Center, National Marine Mammal Laboratory, 7600 Sand Point Way NE, Seattle, WA, 98115, U.S.A.\\
+
+\rm \begin{flushleft}
+\vspace{30mm}
+Running Title: Automated animal surveys \\
+\vspace{10mm}
+Word Count: 6610
+
+\vspace{80mm}
+
+\setlength{\textheight}{575pt}
+\setlength{\baselineskip}{12pt}
+
+
+*Correspondence author: NOAA-NMFS, Alaska Fisheries Science Center, National Marine Mammal Laboratory, 7600 Sand Point Way NE, Seattle, WA 98115 USA;
+Email: paul.conn@noaa.gov
+
+
+\normalsize\newpage
+%\setlength{\textheight}{575pt}
+\setlength{\baselineskip}{24pt}
+%\pagestyle{plain}
+%\pagestyle{headings}
+
+\linenumbers {\bf Summary}\\
+{\bf 1.} Automated detection systems employing advanced technology (e.g. infrared imagery, auditory recording systems, pattern recognition software) are compelling tools for gathering animal abundance and distribution data since investigators can often collect data more efficiently and reduce animal disturbance relative to
+surveys using human observers.  \\
+{\bf 2.} Even with these improvements, analyzing animal abundance with advanced technology can be challenging because of potential for incomplete detection, false positives, and species misidentification.  We argue that double sampling with an independent sampling method can provide the critical information needed to account for such errors.  \\
+{\bf 3.} We present a hierarchical modeling framework for jointly analyzing automated detection and double sampling data obtained during animal population surveys.  Under our framework, observed counts in different sampling units are conceptualized as having arisen from a thinned log-Gaussian Cox process subject to spatial autocorrelation (where thinning accounts for incomplete detection).  For multi-species surveys, our approach handles incomplete species observations owing to (a) structural uncertainties (e.g. in cases where the automatic detection data do not provide species observations), and (b) species misclassification; the latter requires auxiliary information on the misclassification process.\\
+{\bf 4.} As an example of combining an automated detection system and a double sampling procedure, we consider the problem of estimating animal abundance from aerial surveys that use infrared imagery to detect animals, and independent, high-resolution digital photography to provide information on species composition and thermal detection accuracy.  We illustrate our approach by analyzing simulated data and data from a survey of four ice-associated seal species in the eastern Bering Sea.\\
+{\bf 5.}  Our analysis indicated reasonable performance of our hierarchical modeling approach, but suggested
+a need to balance model complexity with the richness of the dataset.  For example, highly parameterized models can lead to spuriously high predictions of abundance in areas that are not sampled, especially when there are large gaps in spatial coverage. \\
+{\bf 6.}  We recommend that ecologists employ double sampling when enumerating animal populations with automated detection systems to estimate and correct for detection errors.  Combining multiple datasets within a hierarchical modeling framework provides a powerful approach for analyzing animal abundance over large spatial domains. \\
+
+{\bf Key words}: abundance estimation, aerial survey, data augmentation, automated detection, hierarchical models, pattern recognition, spatially restricted regression, species misidentification, thermal video
+
+\vspace{.5 in}
+
+
+%\setlength{\textheight}{575pt}
+\setlength{\baselineskip}{24pt}
+
+%\pagewiselinenumbers
+
+{\bf Introduction}
+
+
+\hspace{.5in}Several promising approaches have been developed to monitor animal populations using advanced animal detection technology.  Pattern recognition algorithms \citep[e.g.][]{KoganMargoliash1998} applied to automated auditory collection systems \citep[c.f.][]{BlumsteinEtAl2011} are capable of discriminating different species, sexes, and groups of animals.  Ecologists have deployed acoustic arrays to study a range of taxa including terrestrial \citep{BlumsteinEtAl2011}, marine \citep{MorettiEtAl2010,WardEtAl2012}, and amphibian \citep{WaddleEtAl2009} species. Another active area of research is application of object-based image-analysis to automate animal counts from remotely sensed high-resolution images \citep[see e.g.][]{GroomEtAl2013}.  In this case, a computer algorithm is trained to automatically count animals on a sequence of images. Last, when animals give heat signatures different from their surrounding environment, infrared imagery can be used to enumerate animal populations.  This approach is often combined with digital photography to provide information about species identity, and has been used to monitor
+big horn sheep \citep{BernatasNelson2004}, pinnipeds \citep{ChernookEtAl1999,SpeckmanEtAl2011}, polar bears \citep{AmstrupEtAl2004}, and most frequently,  ungulates \citep[see e.g.][and references therein]{KissellEtAl2011,FrankeEtAl2012}.
+
+\hspace{.5in}Historically, researchers employed human observers to conduct large-scale animal population surveys, and a variety of sampling designs and statistical models are available to cope with imperfect detection when estimating density and abundance from such records \citep[see e.g.][for a review]{WilliamsEtAl2002}.  Advanced technologies (e.g. infrared imagery, automated acoustic detectors,
+pattern recognition software) are a promising alternative for increasing survey coverage
+and reducing detection error, but are far from perfect. For instance, advanced technologies may still miss animals, and may also pick up non-target signatures (resulting in false positives).  In multi-species surveys, species misidentification errors may also be present. To accurately estimate abundance from automated detection data, it is thus often necessary to collect sufficient auxiliary information to estimate and correct for multiple error types.  However, few statistical methods have been developed to incorporate these error rates into abundance estimates \citep[but see][]{MarquesEtAl2013}.
+
+\hspace{.5in}In this paper, we develop a hierarchical modeling framework to estimate animal abundance or landscapes surveyed using an automated detection system. Our approach assumes that the investigator collects independent data using a different sampling approach (hereafter, ``double sampling") over a subset of the survey area to help estimate error rates. In particular, we require that double sampling data be collected in such a manner that it can be used to estimate the probability of false negatives (missed animals), false positives (erroneous detections), and species misidentification.  Further, we assume that double sampling data can be used to accurately measure individual covariates (e.g. group sizes for clusters of animals).
+
+\hspace{.5in}We demonstrate our approach on simulated data and also on aerial survey data of ice-associated seals.  In both cases, automatic detection data consisted of thermal imagery and double sampling consisted of automated high-resolution digital photography.
+Under our approach, thermal imagery is used to find ``hot spots" - points in the infrared video that have more extreme heat signatures when compared to the surrounding environmental matrix.  Digital photographs with matched time stamps can then be searched to get information on the species composition of each hot spot, as well as the number of animals present.  Further, independent searches of photographs can be conducted to estimate the proportion of animals missed.
+
+\hspace{.5in}Our manuscript is organized as follows.  First, we describe the data necessary to conduct a joint analysis of automatic detection and double sampling data. Next, we describe a model-based framework for estimating animal abundance from such records. After describing a simple simulation study, we analyze a test dataset of flights conducted over the eastern Bering Sea in the spring of 2012.  In this case, we wish to make inference about the
+abundance of four ice-associated seal species from data that are contaminated by
+species misclassifications and anomalous thermal readings.
+
+\vspace{.3in}
+
+{\bf Methods} \\
+\vspace{.15in}
+
+DATA REQUIREMENTS \\
+\vspace{.15in}
+
+We suppose that the investigator partitions their survey area into $J$ (possibly irregular) sampling units, each of which has area $A_j$ (see Table \ref{tab:defs} for a complete list of notation).  In practice, the size of the sampling unit will likely be constrained by the resolution of available habitat covariates (e.g. remote sensing data).  We assume that transects through each sampling unit occur more or less randomly with respect to available habitat so that the investigator is not making fine scale adjustments within units to target areas of higher habitat quality.
+We suppose that $L$ ($L \le J$) sampling units are surveyed using an automatic detection system and $R_j$ gives the proportion of unit $j$ that is surveyed.  We suppose that the spatial domain surveyed by the double sampling method in unit $j$ is a subset of that surveyed by the automatic detection system.  As such, we allow for the possibility that some (potentially a large fraction) of automatic detections are not double sampled.
+
+\hspace{.5in}For each unit that is sampled, we suppose that an automatic detection algorithm is employed on remotely sensed data (e.g. thermal video, audio recordings) to compile a list of detections of focal taxa. In practice, some tuning of this algorithm may be needed to balance the resulting sensitivity and specificity; making the algorithm too sensitive can markedly increase the number of false positives, while making it too specific can result in a large number of missed animals.  Note that we allow for both false positives (anomalies) and false negatives (non-detections) in subsequent modeling.
+
+\vspace{.15in}
+{\it Data notation} \\
+\vspace{.15in}
+
+\hspace{.5in}Let $Y_j$ denote the total number of automatic detections that are
+recorded in survey unit $j$.  We assign an indicator $I_{ij}=1$ to automatic detections for which a species observation can be made, and set $I_{ij}=0$ otherwise (here, $i \in \{ 1,2,\hdots,Y_j \}$ identifies the $i$th automatic detection in surveys of sampling unit $j$).  Note that for some automatic detection data (e.g. thermal imagery), double sampling data may actually be necessary to make species determinations, while for others (e.g. auditory detections using speech recognition algorithms), $I_{ij}$ may equal one for every record.  The investigator assigns each automatic detection with $I_{ij}=1$ an observation type, $O_{ij}$.  There is considerable latitude in assigning species classification schemes (see e.g. {\it Species misclassification model} and subsequent examples).  The investigator also records any individual covariates, $Z_{ijk}$ (e.g. group size), where $k$ identifies the $k$th covariate (Table \ref{tab:defs}).  For the present development, we require that covariates are available for each record where $I_{ij}=1$.
+
+
+\vspace{.15in}
+MODEL \\
+\vspace{.15in}
+
+The observed data include a set of species classifications for each sampling unit, a count of unclassified automatic detections for each sampling unit (i.e. those for which $I_{ij}=0$), together with individual covariates such as group size. We also allow for the possibility that the investigator has auxiliary data (through double sampling or some other mechanism) to estimate components of the detection process (e.g. detection probability, species misclassification probabilities), and has gathered habitat covariates to help explain variation in detection.  Our next task shall be to devise a way to conduct inference on animal abundance and species-habitat relationships from such a seemingly disparate data amalgam.
+
+\hspace{.5in} When conceptualizing how the observed data arise, we find it intuitive break the problem down into several components within a hierarchical modeling framework (e.g. Fig. \ref{fig:DAG}).  First, we consider the way in which expected abundance for each species varies over the landscape.  When space is discretized into individual sampling units (as we have done here), a common way to relate counts to habitat covariates is through a spatial regression model.  In our case, we do not know the actual abundance in each sampling unit, but we can still borrow this framework to describe variation in expected abundance in each cell.  Second, the actual abundance of animals sampled in a given sampling unit will typically be different than the expected abundance for several reasons, including random variation, incomplete coverage of the sampling unit, and detection probabilities that are less than one.  We refer to the model describing the relationship between true species counts and expected abundance as a ``local abundance model."  Finally, the type observations that are spawned when a group of animals is detected depends on (1) an observation process relating the true species to different observations classifications, and (2) a process relating the true species to individual covariate values.  We refer to models for these processes as the ``species misidentification model" and ``individual covariate model," respectively.
+
+\hspace{.5in}We now describe each of these four components (spatial regression, local abundance, species misidentification, and individual covariate models) in turn.  In doing so, we make a number of distributional choices that may require refinement in certain sampling scenarios (see Discussion).  We then describe Markov chain Monte Carlo (MCMC) methods and approaches for generating posterior predictions of abundance across the study area.  Throughout, we use bold symbols to denote vectors and matrices.  For a fuller mathematical treatment, see Appendix S1.
+
+
+\vspace{.15in}
+{\it Spatial regression model} \\
+\vspace{.15in}
+
+\hspace{.5in}For each species $s$, we write the log of expected abundance in each sampling unit as a function
+of habitat covariates, spatially autocorrelated random effects, and unstructured random effects. For the moment, we treat each sampling unit as if they were the same size (adjustments for unequal area are made in the following section).  In particular, we express the log of expected abundance ($\nu_{js}$) across the collection of sampling units as
+\begin{linenomath*}
+\begin{equation}
+ \label{eq:spat_reg}
+ \boldsymbol{\nu}_s = {\bf X}_s \boldsymbol{\beta}_s + \boldsymbol{\eta}_s + \boldsymbol{\epsilon}_s,
+\end{equation}
+\end{linenomath*}
+where ${\bf X}_s$ denotes a design matrix relating environmental and habitat covariates to expected abundance, $\boldsymbol{\beta}_s$ gives related regression parameters, the $\boldsymbol{\eta}_s$ specify random effects with spatially autocorrelated, Gaussian errors, and $\boldsymbol{\epsilon}_s$ represents mean zero Gaussian error with precision parameter $\tau_{\nu s}$.
+
+\hspace{.5in}There are several common choices for inducing spatial autocorrelation in hierarchical spatial regression models \citep[see e.g.][]{Banerjee2004}. In the following we specify an intrinsic conditionally autoregressive prior distribution \citep[ICAR;][]{BesagKooperberg1995,RueHeld2005} for $\boldsymbol{\eta}_s$ such  that
+\begin{linenomath*}
+\begin{equation*}
+ \boldsymbol{\eta}_s \sim \mathcal{N}\left( {\bf 0},(\tau_{\eta s}{\bf Q})^{-1} \right),
+\end{equation*}
+\end{linenomath*}
+where $\mathcal{N}()$ denotes a normal (Gaussian) distribution, and $\tau_{\eta s}{\bf Q}$ gives precision of the Gaussian spatial process.  Here, $\tau_{\eta s}$  is a precision parameter to be estimated, and ${\bf Q}$ is defined as ${\bf Q}={\bf D}-{\bf W}$, where ${\bf W}$ is an association matrix describing the spatial neighborhood structure of sampling units and ${\bf D}$ is a diagonal matrix with elements $-{\bf W} {\bf 1}$ (${\bf 1}$ being a column vector of ones).  For purposes of this paper, we use a formulation for ${\bf W}$ that approximates thin-plate splines \citep[][section 3.4.2]{RueHeld2005}.  This approach implies a greater degree of smoothing than first-order formulations for {\bf Q}, a potentially useful feature when analyzing sparse data from abundance surveys (see \texttt{Discussion}).  In an effort to eliminate parameter redundancy and confounding between spatial regression parameters and spatial random effects, we also implemented a restricted spatial regression \citep[RSR;][]{ReichEtAl2006,HodgesReich2010,HughesHaran2013} version of Eq. \ref{eq:spat_reg} (see Appendix S1 for further details).
+
+
+\vspace{.15in}
+{\it Local abundance model} \\
+\vspace{.15in}
+
+\hspace{.5in}The preceding formulation describes variation in the log of abundance intensity, but does not
+include other factors affecting the expected number of animals encountered by surveys in a given cell.  For instance, sampling units may vary in size, the proportion of area surveyed may vary across sampled units, automatic detections may miss animals, and not all animals associated with sampling unit $j$ may be present while surveys are being conducted.  Also, we expect random fluctuations in the number of animals present relative to the expected abundance intensity.  For these reasons, we model the number of automatic detections of species $s$ in sampling unit $j$ ($G_{js}^{\rm obs}=\sum_i I_{[S_{ij}=s]}$) as $G_{js}^{\rm obs} \sim {\rm Poisson}(\lambda_{js})$ where $\lambda_{js}=A_j R_j p_{js} \exp(\nu_{js})$ and $p_{js}=a_{js}p_s$ (recall that notation is defined in Table \ref{tab:defs}).  In conjunction with our choice of a Gaussian distribution for $\nu_{js}$, this formulation implies that the actual number of detections for each species is a realization of a thinned version of the log-Gaussian Cox process \citep[see e.g.][]{RathbunCressie1994,MollerEtAl1998}.
+
+\hspace{.5in}The data collected on aerial surveys do not provide sufficient information to estimate $a_{js}$, so auxiliary data or strong priors are needed on these parameters (see e.g. \texttt{Example: Ice-associated seals}).  One approach for getting information on $p_s$ is to conduct an unaided search of double sampling data, and to treat animals found in the unaided search as trials to test the false negative rate of the automatic detection algorithm; in this case the number of successful automatic detections can be treated as binomial with success probability $p_s$.
+
+\vspace{.15in}
+{\it Species misclassification model} \\
+\vspace{.15in}
+
+\hspace{.5in}The preceding sections describe how animals (or animal groups) of each species are detected.  However, in order to allow imperfect species observations, we need to specify a model relating the true species to actual observations.  For observations where $I_{ij}=1$, we suppose that observations $O_{ij}$ arise according to a multinomial process conditional on the
+true species $S_{ij}$ and classification probabilities $\pi_{ij}^{O_{ij}|S_{ij}}$.  In practice, this specification requires that we treat the true species as a latent parameter (i.e. that we admit uncertainty about its value).
+
+\hspace{.5in}Automatic detection data are typically not sufficient to estimate the misclassification parameters, $\boldsymbol{\pi}$, so strong priors or auxiliary data are needed to provide structure on these (see subsequent examples).  In the following sections, we suppress dependence on individual and transect (i.e. we set $\pi_{ij}^{O_{ij}|S_{ij}}=\pi^{O_{ij}|S_{ij}}$).  However, we suspect that expressing classification parameters as a function of covariates using a multinomial logit link \citep{Agresti2002} will be useful in future applications \citep[see e.g.][for further discussion]{ConnEtAl2013}.  Although there is considerable flexibility for structuring the species classification matrix, we use a formulation specifically tailored to our seal study in subsequent applications.  This formulation requires observers to classify observations by both species and certainty, and also permits them to record species as ``unknown" or ``other" (Table \ref{tab:confuse}).  The ``other" category accounts for false positives.
+
+\vspace{.15in}
+{\it Individual covariate model} \\
+\vspace{.15in}
+
+\hspace{.5in}We allow for the possibility that automatic detection $i$ in sample unit $j$ has $k$ associated individual covariates, which are only assumed to be observed if $I_{ij}=1$ (see Discussion).  The most important of these
+is likely group size, the number of animals that are associated with a specific automatic detection.  In cases where automatic detections can consist of more than one animal, one must include the group size distribution when generating an overall abundance estimate.  Our approach is to parametrically
+model covariates as
+\begin{linenomath*}
+\begin{equation*}
+  Z_{ijk} \sim f_{S_{ij}}(\boldsymbol{\theta}_{S_{ij}}),
+\end{equation*}
+\end{linenomath*}
+where $f_s(\boldsymbol{\theta}_s)$ gives a probability mass or density function with parameters specific to species $s$.  In the applications that follow, we only use one individual covariate (group size), which we give a zero-truncated Poisson distribution with a species-specific intensity parameter to be estimated.  We also require that each
+automatic detection be composed of like species.
+
+\vspace{.15in}
+{\it MCMC sampler} \\
+\vspace{.15in}
+
+\hspace{.5in}Writing our model hierarchically, we are able to envision how broad landscape scale processes can ultimately be translated into observed data in a probabilistic fashion.  Provided that we believe our model is a reasonable approximation to reality and are willing to assign prior distributions for model parameters, Bayesian calculus provides a convenient way of making inference about the data generating process (including parameters describing species-habitat relationships and animal abundance). We used a hybrid Gibbs-Metropolis sampler to draw samples from the joint posterior distribution symbolically specified by Fig. \ref{fig:DAG} (see Appendix S1 for a mathematical specification).  This involves iteratively sampling model parameters from their full conditional distributions.  Owing to our judicious choice of Gaussian error on log scale abundance intensity (i.e. $\nu_{js}$), many of the parameter groups can be sampled directly using the same strategies commonly used in Bayesian analysis of linear models \cite[see e.g.][Chapter 14]{GelmanEtAl2004}.  Our strategy for updating parameters shares many features with some of our past work on distance sampling \citep[see e.g.][]{ConnEtAl2012,ConnEtAl2013} and is presented in Appendix S1.
+
+\vspace{.15in}
+{\it Posterior prediction and model comparison} \\
+\vspace{.15in}
+
+\hspace{.5in}Our models provide estimates of parameters explaining variation in animal abundance (i.e. spatial regression parameters) as well
+as species-specific abundance estimates for animals detected in sampled areas.  To extend inference to the abundance of species $s$ over the entire landscape we use posterior predictive distributions.  For sampling units that we do not sample, posterior predictions can be simulated as
+\begin{linenomath*}
+\begin{equation*}
+  N_{js} \sim {\rm Poisson} (\exp(\nu_{js}) R_j A_j (1 + \theta_s)),
+\end{equation*}
+\end{linenomath*}
+where $\theta_s$ gives the zero-truncated Poisson intensity parameter for group size.
+
+\hspace{.5in}For units that are sampled, we generate posterior samples of abundance that are a combination of (i) animals detected during surveys ($N_{js}^{\rm obs}=\sum_i I_{[S_{ij}=s]}Z_{ij1}$; note that the total number of such animals is fixed, but species can vary), (ii) animals that are associated with sampled areas but were not detected ($N_{js}^*$), and (iii) animals in portions of sampled cells that were not surveyed ($N_{js}^{**}$), such that $N_{js} = N_{js}^{\rm obs}+N_{js}^*+N_{js}^{**}$.  This approach is attractive in that it implicitly includes a finite population correction.  For instance, if all animals are detected in a given sampling unit and there
+is no species misclassification, then abundance in that unit is known with certainty \citep{VerHoef2008,JohnsonEtAl2010}.  Specifically, we can generate abundance predictions as
+\begin{linenomath*}
+\begin{equation*}
+  N_{js}^{*} \sim {\rm Poisson} (\exp(\nu_{js}) R_j A_j (1-p_{js}) (1 + \theta_s)), \hspace{2mm} {\rm and}
+\end{equation*}
+\begin{equation*}
+  N_{js}^{**} \sim {\rm Poisson} (\exp(\nu_{js}) (1-R_j) A_j (1 + \theta_s)).
+\end{equation*}
+\end{linenomath*}
+Predictions of total abundance across the study area can then be calculated as $N_s = \sum_j N_{js}$.
+
+\hspace{.5in}We also compute a posterior predictive loss statistic to compare the performance of alternative models with different sources of variation in modeled abundance (e.g. different combinations of covariates,
+presence/absence of spatial autocorrelation, etc.).  Suggested by \citet{GelfandGhosh1998}, this approach measures the ability of a given model to generate datasets similar to the one collected.  In particular, a loss statistic is computed for each model $m$ as $\mathcal{D}_m = \mathcal{G}_m + \mathcal{P}_m$,
+where $\mathcal{G}_m$ is a measure of posterior loss and $\mathcal{P}_m$ is a penalty for variance.  Models with a smaller overall $\mathcal{D}_m$ are favored in this context.  Our implementation largely follows that of \citet{ConnEtAl2013}; see Appendix S1 for further details.
+
+\vspace{.15in}
+EXAMPLE: SIMULATED DATA \\
+\vspace{.15in}
+
+To assess the ability of our proposed model to accurately estimate abundance, we simulated a survey
+of four species over a $30 \times 30$ grid ($J=900$).  We generated true abundance using the same general model structure
+as used in estimation.  Log abundance for each species was generated as a function of several covariates (easting, northing, and a Matern-distributed hypothetical covariate) as well as spatially correlated error where spatial random effects were generated for each species assuming an ICAR ($\tau=20$) distribution.  Covariate relationships were configured such that for species one, abundance intensity increased linearly in both eastern and northern directions; species two exhibited a low but constant abundance across the landscape; species three exhibited a high abundance on the western edge of the landscape which declined slightly toward the east; and species four had a strong relationship with the hypothetical covariate.  We also included a fifth ``species" in an attempt to mimic anomalous readings (false positives), where expected abundance intensity was  set to be constant across the landscape.  In some cases the ICAR random effects obscured the covariate relationships (Fig. \ref{fig:sim_est}).
+
+\hspace{.5in}We simulated a survey over 200 randomly selected grid cells, assuming that each survey covered 10\% of its target sampling unit (Fig. \ref{fig:sim_est}) and that double sampling was conducted for 80\% of automatic detections.  Total sample coverage was thus $\approx 2.2\%$ of the population. The observation model was built to resemble our seal example (see \texttt{Example:Ice-associated seals}); double sampled animals could be classified as belonging to any of the four target `species,' or could be recorded as `unknown' or `other.'  In addition, there were three classes of target species classification certainty: `certain,' `likely,' and `guess' (Table \ref{tab:confuse}).  Observations were determined according to a multinomial distribution, with probabilities given in Appendix S2.
+
+\hspace{.5in}We supplied our hierarchical model with the same covariates that were used to generate the data (thus utilizing the `correct' functional form and assuming no covariate measurement error), and permitted estimation of RSR ICAR random effects.  We fixed overdispersion relative to the Poisson distribution to be small ($\tau_\nu = 100$) to stabilize estimation (see \texttt{Discussion}).  We summarized the posterior distribution by running the Markov chain for 600,000 iterations, discarding 100,000 iterations as a burn-in and recording values from every 100th iteration to save disk space.  This procedure took $\approx$ 2.5 days on a 2.93 GHz Dell Precision T1500 desktop with 8.0GB of RAM.
+
+
+\vspace{.15in}
+EXAMPLE: ICE-ASSOCIATED SEALS\\
+\vspace{.15in}
+
+We conducted aerial surveys of four ice-associated seal species (bearded seals, {\it Erignathus barbatus}; ribbon seals, {\it Histriophoca fasciata}; ringed seals, {\it Phoca hispida}; and spotted seals, {\it Phoca largha}) over the eastern Bering Sea between April 10 and May 22, 2012.  Our strategy was to use infrared cameras to as an automatic detection procedure, and to use a set of independent, automated digital photographs as a form of double sampling (Fig. \ref{fig:hotspot}).  Two aircraft were used in surveys, a NOAA DeHavilland DHC-6 Twin Otter and an AC-690 Aero Commander.  The Twin Otter was configured with three FLIR SC645 far-IR infrared cameras with 25 mm lenses measuring data in the 7.5-13 um wavelength, each of which was paired with a 21 megapixel high-resolution digital single-lens reflex (SLR) camera with a 100 mm lens in the belly port of the airplane.  To avoid counting the same animal twice, the infrared cameras were mounted such that their thermal swaths abutted each other but did not overlap.  Flying at a target altitude of 300 m, this configuration produced a thermal swath width of approximately 470 m.  The Aero Commander was similarly configured with two sets of infrared and SLR cameras, resulting in a thermal swath width of approximately 280 m. SLRs were automated to take pictures approximately every 1-1.4 seconds; flying at a target speed of 130 kts, photographs covered $\approx 84\%$ of the thermal swath.
+
+\hspace{.5in}As the quantity and distribution of sea ice varied considerably over the course of the surveys, we selected 10 flights that provided good spatial coverage within a one week period (April 20-27) for analysis (Fig. \ref{fig:flights}), assuming abundance was constant over the study area during this period. Analysis was also limited to one set of cameras from each plane.  In total, our analysis included 9076 km of survey effort (40.7 hours of flying time).  We limited effort to times and locations when altitude was 228.6-335.3 m and roll was less than 2.5 degrees from center.  Yaw could not be calculated reliably, and was not included in area calculations.
+
+\hspace{.5in}We compiled several covariates we thought might be useful in predicting seal abundance in our study area. These included marine ecoregion \citep[cf.][]{PiattSpringer2007}, distance from mainland, distance from 1000 m depth contour, sea ice concentration, distance from southern ice edge, and distance from 10\% sea ice contour (Fig. \ref{fig:covs}).  Remotely-sensed sea ice data were obtained at a $25 \times 25$ km resolution from the National Snow and Ice Data Center, Boulder, CO on an EASE Grid 2.0 projection.  We used this projection and same resolution to define sampling units (Fig. \ref{fig:flights}). Calculations of covariates were made relative to the centroid of each sampling unit.
+
+\hspace{.5in}To estimate the probability of detection associated with infrared detections ($p_s$), a technician manually searched an independent, systematic random sample of 11,724 digital photographs (out of a total of 117,225 images) for the presence of seals.  The technician spent approximately 120 hours searching photographs, and found a total of 70 seal groups. We then examined whether these seal groups were also detected as hot spots using our infrared hot spot detection method, finding that 66 (94.3\%) of them were detected.  As species could not always be identified, we set $p_s=p$ for all species and used these data to help estimate the overall probability of detection (see below).  For reference, the conditional probability of detection for our technician (calculated using seals detected by infrared) was lower at 66/82 = 80.5\%.
+
+\hspace{.5in}We obtained data on availability probability ($a_{js}$) from ARGOS-linked satellite transmitters affixed to spotted, bearded, and ribbon seals in the Bering Sea from 2004 through 2012.  A conductivity sensor placed on each transmitter provided hourly data on the proportion of time each tag was dry.  As in previous analyses \citep[e.g.][]{BengtsonEtAl2005,VerHoefEtAl2010}, dry-time percentages were converted into Bernoulli responses to analyze seal haul-out behavior, where a success was recorded whenever tags were mostly ($\ge$50\%) dry in a given hour (seals could only be detected by thermal imagery when they were out of water).  Because we were only interested in explaining variation in haul-out behavior during spring, we limited analysis to records between February 1 and July 31 of each year, treating each individual-year combination as an independent replicate (i.e. data for individuals obtained in two separate years were treated as if they were statistically independently).  This approach resulted in a total of 19 individual-year combinations for bearded seals, 92 for ribbon seals, and 55 for spotted seals.  These data were analyzed within a generalized linear mixed modeling framework that explicitly acknowledges temporal autocorrelation in responses \citep[see ][]{VerHoefEtAl2010}.  For our purposes, the linear predictor was written as a function of hour of day and day of year.  Hour of day was treated as a categorical variable with 24 levels, while day of year was calculated as proportion of year since February 1.  We modeled linear, quadratic, and cubic effects for day of year, and included all interactions between day of year and hour of day.  After separate models were fitted to data for each species, predictions in logit space (Fig. \ref{fig:HO}) and an associated variance-covariance matrix could be computed for any set of $a_{js}$ of interest using standard mixed model theory \citep[see e.g.][]{LittellEtAl1996,VerHoefEtAl2013}.
+
+\hspace{.5in}We used the following procedure to produce prior samples of $p_{js}$ for surveyed sampling units:
+\begin{enumerate}
+  \item Determine an average time of day and day of year when sampling was conducted on each sample unit
+  \item For ${\rm rep} \in \{ 1,2,\hdots,1000 \}$, sample ${\rm logit}({\bf a}_s^{\rm rep}) \sim {\rm MVN}(\boldsymbol{\mu},\boldsymbol{\Sigma})$, where $\boldsymbol{\mu}$ gives mixed model haul-out (availability) predictions in logit space, and $\boldsymbol{\Sigma}$ gives the prediction variance-covariance matrix.
+  \item For ${\rm rep} \in \{ 1,2,\hdots,1000 \}$, sample infared detection probability as $p^{\rm rep}_s \sim {\rm Beta}(67,5)$.  This formulation assumes a conjugate ${\rm Beta}(1,1)$ prior on $p_s$.
+  \item Compute samples of detection probability (availability $\times$ infared detection) by sampling unit as ${\bf p}_{s}^{\rm rep}={\bf a}_s^{\rm rep} p_s^{\rm rep}$.
+\end{enumerate}
+Samples of ${\bf p}_{s}^{\rm rep}$ could then be used as a prior distribution within a Metropolis-Hastings step to account for detection probabilities that varied by hour, day of year, and species (see Appendix S1 for further details).  Note that there were no availability data for ringed seals,
+so $a_{js}$ was set to 1.0.  As such, ringed seal abundance estimates are uncorrected for availability.
+
+\hspace{.5in}An independent experiment was performed to generate a prior distribution of species classification probabilities (B. McClintock, \texttt{Unpublished data}).  This analysis used readings by multiple observers and certainty categories (certain, likely, guess) to produce posterior predictions of classification probabilities, with a constraint that observations recorded as ``certain" were 100\% accurate.  These predictions were used directly as a joint prior distribution for the species classification matrix (see Appendix S1).  The classification matrix specified by the posterior mean of these predictions is provided in Appendix S2.
+
+\hspace{.5in}We considered several model formulations for each species.  Based on prior surveys in the region \citep[see e.g.][]{ConnEtAl2013,VerHoefEtAl2013}, our a priori expectation was that ribbon and spotted seals would be concentrated in the southern portions of our study area, whereas bearded and ringed seals would be primarily located farther north.  We also expected abundance would be nonlinearly related to sea ice concentration, where zero seals would be detected in cells with no ice, and few seals (possibly with the exception of ringed seals) would be detected in cells with 100\% ice.  Ideally, a model for ribbon seal abundance would be written as a function of the distance from the continental shelf, where nutrient upwelling supports an abundant prey base; however, models with continuous predictors proved problematic for ribbon seals, as covariates (and combinations of covariates) were often maximized in the southwest corner of our study area, producing estimates of abundance that were unbelievably high (note that there were considerable gaps in sampling in this region).  To avoid extrapolation past the range of observed data, we thus wrote all models for ribbon seals as a function of ecoregion and sea ice only.  For the remaining species,
+we fit two possible models to the data.  In the first, the log of abundance intensity was written as an additive function of $ice\_conc$, $ice\_conc^2$, $dist\_mainland$, $dist\_shelf$, $dist\_contour$, and $dist\_edge$.  In the second model, the log of abundance intensity was the same as ribbon seals; namely an additive function of $ice\_conc$, $ice\_conc^2$, and $ecoregion$.
+
+\hspace{.5in}We initially tried to fit models that included RSR ICAR random effects, but these often produced overinflated estimates of abundance in areas where there were large gaps in spatial coverage, even when the spatial neighborhood defining the ${\bf Q}$ structure matrix was a relatively smooth RW2 structure \citep[as in][section 3.4.2]{RueHeld2005}.  As such, we limit estimation to pure trend surface models that do not include spatial autocorrelation (i.e. $\boldsymbol{\nu}_s={\bf X}_s \boldsymbol{\beta}_s + \boldsymbol{\epsilon}_s$), acknowledging that posterior predictions of abundance likely overstate precision (see \texttt{Discussion}).  Initial runs also produced positive predictions of seal abundance in cells without ice, likely because we only surveyed cells that had ice.  To anchor this intercept at zero, we introduced dummy data into estimation that indicated we encountered zero seals in cells with $<0.1\%$ sea ice.  As with the simulated data example, we set $\tau_{\nu s}=100$ and summarized the posterior distribution by running the Markov chain for 600,000 iterations, discarding 100,000 iterations as a burn-in, and recording values from every 100th iteration to save disk space.  This procedure took $\approx$ 3.5 days on a 2.93 GHz Dell Precision T1500 destop with 8.0 GB of RAM.
+
+
+\vspace{.3in}
+{\bf Results} \\
+\vspace{.15in}
+
+\vspace{.15in}
+SIMULATED DATA \\
+\vspace{.15in}
+
+Posterior predictive distributions for estimated abundance reasonably approximated the spatial distribution for each species (Fig. \ref{fig:sim_est}), and posterior predictive distributions of total abundance captured true abundance in all cases (Fig. \ref{fig:sim_N}).  This suggests that our estimation scheme produces reasonable estimates, at least for the sample coverage ($\approx 2.2\%$) and high frequency of double sampling (80\%) assumed here.
+
+\vspace{.15in}
+ICE-ASSOCIATED SEALS\\
+\vspace{.15in}
+
+Our posterior loss statistic favored model one (with continuous covariates for all species other than ribbon seals; $\mathcal{D}_1=4066$) over model two (where ecoregion was used for all species; $\mathcal{D}_2=4118$), although estimated
+seal abundance was similar for each. Patterns in seal abundance conformed to our a priori expectations regarding species distributions for each model; for brevity, we present overall abundance estimates (Fig. \ref{fig:N}) and mean posterior prediction abundance maps (Fig. \ref{fig:dists}) from model 1 only. Posterior mean density estimates, calculated using an effective study area of 767,114 km$^2$, were 0.39 seals/km$^2$ (95\% CI 0.32-0.47) for bearded seals, 0.24 seals/km$^2$ (95\% CI 0.19-0.30) for ribbon seals, and 0.60 seals/km$^2$ for spotted seals (95\% CI 0.51-0.73).  We also were able to estimate the relationship between seal abundance and ice concentration, finding that for most species abundance was maximized when the proportion of sea ice in a sampling unit was in the 0.6-0.8 range (Fig. \ref{fig:ice_eff}).
+
+
+\vspace{.3in}
+{\bf Discussion} \\
+\vspace{.15in}
+
+Automated detection systems offer several potential advantages over human observer surveys.  For example, infrared survey flights can be flown faster and at higher altitudes than conventional (human observer) surveys, increasing the effective area that can be surveyed, decreasing the likelihood of animal disturbance, and making surveys safer for pilots and crew.  Surveys using automated detection devices have the added advantage of providing a physical, archivable record of animal detections.
+However, such surveys can still miss animals or pick up non-target signatures.  Here, we have shown that double sampling (in seal example, digital photography) is a viable avenue for allowing species-specific inferences about abundance from automated detection data.  However, this approach requires rather sophisticated hardware and software, as well as modeling techniques to account for the vagaries of the detection process, including imperfect detection, availability less than one, anomalies (false positives), and species misclassification (note that some of these factors are also likely to occur in studies with human observers, evenly if they are usually ignored!).
+Despite the complexity, the simulation study suggested that our approach is capable of estimating maps of species distributions that capture large scale trends in abundance, with posterior predictive distributions of total abundance including true values.
+
+\hspace{.5in}Our seal dataset was quite sparse, with survey tracks covering about 0.4\% of the study area.  Nevertheless, we were able to fit trend surface models to these data and generate posterior predictions for abundance that largely reflected
+our a priori expectations.  For instance, our seal density estimates compared favorably to results from 2006 helicopter transect surveys over a 279,880 km$^2$ subset of our study area \citep{VerHoefEtAl2013}, where densities were estimated as 0.22 bearded seals/km$^2$ (95\% CI 0.12-0.61), 0.22 ribbon seals/km$^2$ (95\% CI 0.13-0.68), and 0.84 spotted seals/km$^2$ (95\% CI 0.49-2.83).
+In addition to the actual numbers, the relationships between abundance and underlying landscape and environmental covariates may also be of interest.  For instance, we were able to relate seal abundance to landscape features (e.g. distance from land), remotely sensed sea ice data, and ecotype, and to compare
+alternative models via a posterior loss statistic.  Seal density appeared to peak at slightly higher values of sea ice concentration than previously observed \citep[cf.][]{VerHoefEtAl2013}, possibly due to the uncharacteristically high levels of ice in the Bering Sea in 2012. We hope to build upon this modeling framework to arrive at more definitive estimates of seal abundance and covariate relationships in the near future.  This effort will likely include adding a temporal dimension in the process model to account for changing sea ice conditions \citep{VerHoefEtAl2013} and expanding the survey grid to include data from concurrent Russian surveys in the western Bering Sea.  Owing to current CPU run times (i.e. 3.5 days for the seal analysis), this effort will also likely require improvements to computer code (e.g. by using parallel processing).
+
+\hspace{.5in}Although not presented here, our experience with fitting models to both simulated and real data is that there needs to be relatively intense spatial coverage to support estimation of overdispersion (i.e. $\tau_{\nu s}$) and/or spatial random effects using our modeling approach.  Since modeling occurs on the log of abundance intensity, the tendency with overparameterized models is for positive bias, particularly in unsampled cells.  The robustness of our approach is likely viewed along a continuum.  With low spatial coverage, trend surface models (i.e. those without spatial autocorrelation) may still do a reliable job of predicting abundance at the expense of overstated precision.  However, even with trend surface models, investigators should take care to avoid situations where the linear predictor for abundance has maximum values in unsampled areas.  With higher levels of spatial coverage (and low species misclassification rates), estimation of spatial random effects and overdispersion may be more reliable, particularly when considering reduced rank spatial models like the RSR approach outlined in Appendix S1.
+
+\hspace{.5in} The methods developed in this paper were largely motivated by our seal data, and we recognize that further developments and refinements may be needed when different automatic detection systems and double sampling strategies are employed.  For example, our use of double sampling data to estimate detection probability implicitly relies on the assumption that animal detections in each dataset (automatic detection, double sampling) are independent.  We think this assumption is reasonable in our seal example, but would likely fail in terrestrial applications where habitat cover affects thermal and visual detections similarly \citep{FrankeEtAl2012}. For many terrestrial applications, as well as surveys using automated image processing, an alternative double sampling dataset would likely be needed (e.g. using surveys of known animals).  For auditory surveys, assessment of error rates could be conducted using test datasets where true species is known.  However, auditory surveys would likely need to account for additional factors such as cue rate and variation in auditory detection distances \citep{MarquesEtAl2013}, as well as availability probability \citep{DiefenbachEtAl2007}.
+
+\hspace{.5in} An additional consideration is the amount of double sampling that needs to be conducted.  Required coverage largely depends on the amount of information provided by double sampling, as well as the propensity for spatial variation in detection errors.  In our seal example, double sampling (i.e. automated digital photography) was used in at least three ways: (i) to provide species observations (including false positives), (ii) to estimate detectability, and (iii) to examine species identification errors via an experiment with multiple image readers. Since species distributions and false positive rates varied considerably across the landscape, it was thus necessary to have considerable coverage in double sampling data (e.g. 79\% of detected hotspots had an associated photograph).  By contrast, we only searched $\approx 10\%$ of available images to estimate detection probability and used 716 photographs for our species identification experiment.  We did not expect these error rates to vary spatially, and target proportions were largely informed by power analysis (J. Ver Hoef, unpublished data).  We do not expect to increase these latter sample sizes in future work (i.e. even when increasing the number of flights), since we expect to use the same technology and transect protocols.
+
+\hspace{.5in} Our approach was to account for missed animals by including detection probability as a thinning parameter relative to the log-Gaussian Cox process, which is likely appropriate for many populations.  However, when automated detection of animals is a function of individual-level covariate (e.g. size, distinctiveness), an alternative approach such as data augmentation \citep{Royle2009,ConnEtAl2012} would likely be necessary since detection probability must then be modeled at the level of the individual animal.  Additional approaches to account for overdispersion (e.g. zero inflation, variance inflation factors) would also be useful and are a subject of current research.
+
+\hspace{.5in} It is important to contrast our approach in this paper, which uses double sampling to estimate detection probability, to approaches that rely on temporal replication or distance data.  For instance, $N$-mixture models \citep{Royle2004} also specify a hierarchical framework for spatially-replicated animal count data; in this case a population closure assumption and temporal replication render detection probability estimable.  However, since detection probability includes a number of processes \citep[e.g. detectability, availability; cf.][]{NicholsEtAl2009}, it is usually not possible to scale up to absolute abundance with $N$-mixture models.  Another related approach is hierarchical models for distance sampling data, which
+rely on the assumption of declining distance from the transect line to help estimate detection probability \citep[cf.][]{ConnEtAl2012,SchmidtEtAl2011,VerHoefEtAl2013}.
+
+\hspace{.5in} Despite the complexities associated with modeling the detection process, we are optimistic about the future of automated detection systems as a tool for estimating animal abundance over large spatial domains.  These tools provide the means to markedly increase survey coverage and reduce data processing times.  Hierarchical models, like the one we have developed in this paper, provide a natural framework to combine multiple datasets that can be used to estimate different components of the detection process, and to correctly propagate uncertainties associated with each component into final estimates.
+
+\vspace{.3in}
+{\bf Acknowledgments} \\
+\vspace{.15in}
+We thank all NOAA personnel and contractors that helped collect and process seal data, and J. Jansen, D. Johnson, J. Laake, and an anonymous reviewer for providing helpful comments on a previous version of this manuscript.  Funding for aerial surveys was provided
+by the U.S. National Oceanic and Atmospheric Administration and by the U.S. Bureau of Ocean Energy Management.  Most of the bearded seal haul-out data
+were collected and made available by the native village of Kotzebue and the Alaska Department of Fish
+and Game, with support from the Tribal Wildlife Grants Program of the US Fish and Wildlife Service
+(Grant Number U-4-IT). The satellite telemetry studies were conducted under the authority of Marine
+Mammal Protection Act Scientific Research Permits 15126, 782-1765, 782-1676, and 358-1787. Views expressed are those of the authors and do not necessarily represent findings or policy of any government agency.  Use of trade or brand names does not indicate endorsement by the U.S. government.
+
+
+\vspace{.3in}
+{\bf Data Accessibility} \\
+\vspace{.15in}
+-{\it R scripts: uploaded as online supporting information} \\
+-{\it Seal survey data: uploaded as online supporting information}
+
+%\bibliographystyle{jecol}
+%\bibliography{master_bib}
+\begin{thebibliography}{39}
+\providecommand{\natexlab}[1]{#1}
+
+\bibitem[{Agresti(2002)}]{Agresti2002}
+Agresti, A. (2002).
+\newblock {\em Categorical Data Analysis, 2nd Edition\/}.
+\newblock Wiley-Interscience, Hoboken, N.J.
+
+\bibitem[{Amstrup {\em et~al.\/}(2004)Amstrup, York, McDonald, Nielson \&
+  Simac}]{AmstrupEtAl2004}
+Amstrup, S.~C., York, G., McDonald, T.~L., Nielson, R. \& Simac, K. (2004).
+\newblock Detecting denning polar bears with forward-looking infrared (FLIR)
+  imagery.
+\newblock {\em BioScience\/}, {\bf 54}, 337--344.
+
+\bibitem[{Banerjee {\em et~al.\/}(2004)Banerjee, Carlin \&
+  Gelfand}]{Banerjee2004}
+Banerjee, S., Carlin, B. \& Gelfand, A.~E. (2004).
+\newblock {\em Hierarchical modeling and analysis of spatial data\/}.
+\newblock Chapman \& Hall/CRC.
+
+\bibitem[{Bengtson {\em et~al.\/}(2005)Bengtson, Hiruki-Raring, Simpkins \&
+  Boveng}]{BengtsonEtAl2005}
+Bengtson, J.~L., Hiruki-Raring, L.~M., Simpkins, M.~A. \& Boveng, P.~L. (2005).
+\newblock Ringed and bearded seal densities in the eastern {C}hukchi {S}ea,
+  1999-2000.
+\newblock {\em Polar Biology\/}, {\bf 28}, 833--845.
+
+\bibitem[{Bernatas \& Nelson(2004)}]{BernatasNelson2004}
+Bernatas, S. \& Nelson, L. (2004).
+\newblock Sightability model for {C}alifornia bighorn sheep in canyonlands
+  using forward-looking infrared (FLIR).
+\newblock {\em Wildlife Society Bulletin\/}, {\bf 32}, 638--647.
+
+\bibitem[{Besag \& Kooperberg(1995)}]{BesagKooperberg1995}
+Besag, J. \& Kooperberg, C. (1995).
+\newblock On conditional and intrinsic autoregressions.
+\newblock {\em Biometrika\/}, {\bf 82}, 733--746.
+
+\bibitem[{Blumstein {\em et~al.\/}(2011)Blumstein, Mennill, Clemins, Girod,
+  Yao, Patricelli, Deppe, Krakauer, Clark, Cortopassi, Hanser \&
+  McCowan}]{BlumsteinEtAl2011}
+Blumstein, D.~T., Mennill, D.~J., Clemins, P., Girod, L., Yao, K., Patricelli,
+  G., Deppe, J.~L., Krakauer, A.~H., Clark, C., Cortopassi, K.~A., Hanser,
+  S.~F. \& McCowan, B. (2011).
+\newblock Acoustic monitoring in terrestrial environments using microphone
+  arrays: applications, technological considerations and prospectus.
+\newblock {\em Journal of Applied Ecology\/}, {\bf 48}, 758--767.
+
+\bibitem[{Chernook {\em et~al.\/}(1999)Chernook, Kuznetsov \&
+  Yakovenko}]{ChernookEtAl1999}
+Chernook, V.~I., Kuznetsov, N.~B. \& Yakovenko, M.~Y. (1999).
+\newblock {\em Multispectral aerial survey of haulouts of ice seals\/}.
+\newblock PINRO Publications, Murmansk, Russia.
+\newblock (in Russian).
+
+\bibitem[{Conn {\em et~al.\/}(2012)Conn, Laake \& Johnson}]{ConnEtAl2012}
+Conn, P.~B., Laake, J.~L. \& Johnson, D.~S. (2012).
+\newblock A hierarchical modeling framework for multiple observer transect
+  surveys.
+\newblock {\em PLoS ONE\/}, {\bf 7}, e42294.
+
+\bibitem[{Conn {\em et~al.\/}(In press)Conn, McClintock, Cameron, Johnson,
+  Moreland \& Boveng}]{ConnEtAl2013}
+Conn, P.~B., McClintock, B.~T., Cameron, M.~F., Johnson, D.~S., Moreland, E.~E.
+  \& Boveng, P.~L. (In press).
+\newblock Accommodating species identification errors in transect surveys.
+\newblock {\em Ecology\/}.
+
+\bibitem[{Diefenbach {\em et~al.\/}(2007)Diefenbach, Marshall, Mattice \&
+  Brauning}]{DiefenbachEtAl2007}
+Diefenbach, D.~R., Marshall, M., Mattice, J. \& Brauning, D. (2007).
+\newblock Incorporating availability for detection in estimates of bird
+  abundance.
+\newblock {\em The Auk\/}, {\bf 124}, 96--106.
+
+\bibitem[{Franke {\em et~al.\/}(2012)Franke, Goll, Hohmann \&
+  Heurich}]{FrankeEtAl2012}
+Franke, U., Goll, B., Hohmann, U. \& Heurich, M. (2012).
+\newblock Aerial ungulate surveys with a combination of infrared and
+  high-resolution natural colour images.
+\newblock {\em Animal Biodiversity and Conservation\/}, {\bf 35}, 285--293.
+
+\bibitem[{Gelfand \& Ghosh(1998)}]{GelfandGhosh1998}
+Gelfand, A.~E. \& Ghosh, S. (1998).
+\newblock Model choice: A minimum posterior predictive loss approach.
+\newblock {\em Biometrika\/}, {\bf 85}, 1--11.
+
+\bibitem[{Gelman {\em et~al.\/}(2004)Gelman, Carlin, Stern \&
+  Rubin}]{GelmanEtAl2004}
+Gelman, A., Carlin, J.~B., Stern, H.~S. \& Rubin, D.~B. (2004).
+\newblock {\em Bayesian Data Analysis, 2nd Edition\/}.
+\newblock Chapman and Hall, Boca Raton.
+
+\bibitem[{Groom {\em et~al.\/}(2013)Groom, Stjernholm, Nielsen, Fleetwood \&
+  Petersen}]{GroomEtAl2013}
+Groom, G., Stjernholm, M., Nielsen, R.~D., Fleetwood, A. \& Petersen, I.~K.
+  (2013).
+\newblock Remote sensing image data and automated analysis to describe marine
+  bird distributions and abundance.
+\newblock {\em Ecological Informatics\/}, {\bf 14}, 2--8.
+
+\bibitem[{Hodges \& Reich(2010)}]{HodgesReich2010}
+Hodges, J. \& Reich, B. (2010).
+\newblock Adding spatially-correlated errors can mess up the fixed effects you
+  love.
+\newblock {\em American Statistician\/}, {\bf 64}, 325--334.
+
+\bibitem[{Hughes \& Haran(2013)}]{HughesHaran2013}
+Hughes, J. \& Haran, M. (2013).
+\newblock Dimension reduction and alleviation of confounding for spatial
+  generalized mixed models.
+\newblock {\em Journal of the Royal Statistical Society B\/}, {\bf 75},
+  139--159.
+
+\bibitem[{Johnson {\em et~al.\/}(2010)Johnson, Laake \&
+  Ver~Hoef}]{JohnsonEtAl2010}
+Johnson, D., Laake, J. \& Ver~Hoef, J. (2010).
+\newblock A model-based approach for making ecological inference from distance
+  sampling data.
+\newblock {\em Biometrics\/}, {\bf 66}, 310--318.
+
+\bibitem[{Kissell~Jr. \& Nimmo(2011)}]{KissellEtAl2011}
+Kissell~Jr., R.~E. \& Nimmo, S.~K. (2011).
+\newblock A technique to estimate white-tailed deer {\it Odocoileus virginanus}
+  density using vertical-looking infrared imagery.
+\newblock {\em Wildlife Biology\/}, {\bf 17}, 85--92.
+
+\bibitem[{Kogan \& Margoliash(1998)}]{KoganMargoliash1998}
+Kogan, J.~A. \& Margoliash, D. (1998).
+\newblock Automated recognition of bird song elements from continuous
+  recordings using dynamic time warping and hidden Markov models: A comparative
+  study.
+\newblock {\em Journal of the Acoustical Society of America\/}, {\bf 103},
+  2185--2196.
+
+\bibitem[{Littell {\em et~al.\/}(1996)Littell, Milliken, Stroup \&
+  Wolfinger}]{LittellEtAl1996}
+Littell, R.~C., Milliken, R.~C., Stroup, W.~W. \& Wolfinger, R. (1996).
+\newblock {\em SAS System for Mixed Models\/}.
+\newblock SAS Publishing, Cary, North Carolina.
+
+\bibitem[{Marques {\em et~al.\/}(2013)Marques, Thomas, Martin, Mellinger, Ward,
+  Moretti, Harris \& Tyack}]{MarquesEtAl2013}
+Marques, T.~A., Thomas, L., Martin, S.~W., Mellinger, D.~K., Ward, J.~A.,
+  Moretti, D.~J., Harris, D. \& Tyack, P.~L. (2013).
+\newblock Estimating animal population density using passive acoustics.
+\newblock {\em Biological Reviews\/}, {\bf 88}, 287--309.
+
+\bibitem[{M{\o}ller {\em et~al.\/}(1998)M{\o}ller, Syversveen \&
+  Waagepetersen}]{MollerEtAl1998}
+M{\o}ller, J., Syversveen, A.~R. \& Waagepetersen, R.~P. (1998).
+\newblock Log {G}aussian {C}ox processes.
+\newblock {\em Scandinavian Journal of Statistics\/}, {\bf 25}, 451--482.
+
+\bibitem[{Moretti {\em et~al.\/}(2010)Moretti, Marques, Thomas, DiMarzio,
+  Dilley, Morrissey, McCarthy, Ward \& Jarvis}]{MorettiEtAl2010}
+Moretti, D., Marques, T.~A., Thomas, L., DiMarzio, N., Dilley, A., Morrissey,
+  R., McCarthy, E., Ward, J. \& Jarvis, S. (2010).
+\newblock A dive counting density estimation method for {B}lainville's beaked
+  whale ({M}esoplodon densirostris) using a bottom-mounted hydrophone field as
+  applied to a {M}id-{F}requency {A}ctive (MFA) sonar operation.
+\newblock {\em Applied Acoustics\/}, {\bf 71}, 1036--1042.
+
+\bibitem[{Nichols {\em et~al.\/}(2009)Nichols, Thomas \&
+  Conn}]{NicholsEtAl2009}
+Nichols, J., Thomas, L. \& Conn, P. (2009).
+\newblock Inferences about landbird abundance from count data: recent advances
+  and future directions.
+\newblock {\em Modeling demographic processes in marked populations\/} (eds.
+  D.~Thomson, E.~Cooch \& M.~Conroy), {\em Volume~3\/}. {\em Environmental and
+  Ecological Statistics Series\/}, pp. 201--236. Springer, New York.
+
+\bibitem[{Piatt \& Springer(2007)}]{PiattSpringer2007}
+Piatt, J.~F. \& Springer, A.~M. (2007).
+\newblock Marine ecoregions of Alaska.
+\newblock {\em Long-term Ecological Change in the Northern Gulf of Alaska\/},
+  pp. 522--526. Elsevier, Amsterdam.
+
+\bibitem[{Rathbun \& Cressie(1994)}]{RathbunCressie1994}
+Rathbun, S.~L. \& Cressie, N. (1994).
+\newblock A space-time survival point process for a longleaf pine forest in
+  {S}outhern {G}eorgia.
+\newblock {\em Journal of the American Statistical Association\/}, {\bf 89},
+  1164--1174.
+
+\bibitem[{Reich {\em et~al.\/}(2006)Reich, Hodges \& Zadnik}]{ReichEtAl2006}
+Reich, B., Hodges, J. \& Zadnik, V. (2006).
+\newblock Effects of residual smoothing on the posterior of the fixed effects
+  in disease-mapping models.
+\newblock {\em Biometrics\/}, {\bf 62}, 1197--1206.
+
+\bibitem[{Royle(2009)}]{Royle2009}
+Royle, J. (2009).
+\newblock Analysis of capture-recapture models with individual covariates using
+  data augmentation.
+\newblock {\em Biometrics\/}, {\bf 65}, 267--274.
+
+\bibitem[{Royle {\em et~al.\/}(2004)Royle, Dawson \& Bates}]{Royle2004}
+Royle, J., Dawson, D. \& Bates, S. (2004).
+\newblock Modeling abundance effects in distance sampling.
+\newblock {\em Ecology\/}, {\bf 85}, 1591--1597.
+
+\bibitem[{Rue \& Held(2005)}]{RueHeld2005}
+Rue, H. \& Held, L. (2005).
+\newblock {\em Gaussian Markov Random Fields\/}.
+\newblock Chapman \& Hall/CR, Boca Raton, Florida, USA.
+
+\bibitem[{Schmidt {\em et~al.\/}(2011)Schmidt, Rattenbury, Lawler \&
+  Maccluskie}]{SchmidtEtAl2011}
+Schmidt, J., Rattenbury, K., Lawler, J. \& Maccluskie, M. (2011).
+\newblock Using distance sampling and hierarchical models to improve estimates
+  of Dall's sheep abundance.
+\newblock {\em Journal of Wildlife Management\/}, {\bf 76}, 317--327.
+
+\bibitem[{Speckman {\em et~al.\/}(2011)Speckman, Chernook, Burn, Udevitz,
+  Kochnev, Vasilev, Chandwick, Lisovsky, Fishcbach \&
+  Benter}]{SpeckmanEtAl2011}
+Speckman, S.~G., Chernook, V.~I., Burn, D.~M., Udevitz, M.~S., Kochnev, A.~A.,
+  Vasilev, A., Chandwick, J.~V., Lisovsky, A., Fishcbach, A.~S. \& Benter,
+  R.~B. (2011).
+\newblock Results and evaluation of a survey to estimate {P}acific walrus
+  population size, 2006.
+\newblock {\em Marine Mammal Science\/}, {\bf 27}, 514--553.
+
+\bibitem[{Ver~Hoef {\em et~al.\/}(2010)Ver~Hoef, London \&
+  Boveng}]{VerHoefEtAl2010}
+Ver~Hoef, J., London, J. \& Boveng, P. (2010).
+\newblock Fast computing of some generalized linear mixed pseudo-models with
+  temporal autocorrelation.
+\newblock {\em Computational Statistics\/}, {\bf 25}, 39--55.
+
+\bibitem[{Ver~Hoef(2008)}]{VerHoef2008}
+Ver~Hoef, J.~M. (2008).
+\newblock Spatial methods for plot-based sampling of wildlife populations.
+\newblock {\em Environmental and Ecological Statistics\/}, {\bf 15}, 3--13.
+
+\bibitem[{Ver~Hoef {\em et~al.\/}(2013)Ver~Hoef, Cameron, Boveng, London \&
+  Moreland}]{VerHoefEtAl2013}
+Ver~Hoef, J.~M., Cameron, M.~F., Boveng, P.~L., London, J.~M. \& Moreland,
+  E.~E. (2013).
+\newblock A hierarchical model for abundance of three ice-associated seal
+  species in the eastern {B}ering {S}ea.
+\newblock {\em Statistical Methodology\/}, p.
+  http://dx.doi.org/10.1016/j.stamet.2013.03.001.
+
+\bibitem[{Waddle {\em et~al.\/}(2009)Waddle, Thigpen \&
+  Glorioso}]{WaddleEtAl2009}
+Waddle, J.~H., Thigpen, T.~F. \& Glorioso, B.~M. (2009).
+\newblock Efficacy of automatic vocalization recognition software for anuran
+  monitoring.
+\newblock {\em Herpetological Conservation and Biology\/}, {\bf 4}, 384--388.
+
+\bibitem[{Ward {\em et~al.\/}(2012)Ward, Thomas, Jarvis, Baggenstoss, DiMarzio,
+  Moretti, Morrissey, Marques, Dunn, Claridge, Hartvig \& Tyack}]{WardEtAl2012}
+Ward, J.~A., Thomas, L., Jarvis, S., Baggenstoss, P., DiMarzio, N., Moretti,
+  D., Morrissey, R., Marques, T.~A., Dunn, C., Claridge, D., Hartvig, E. \&
+  Tyack, P. (2012).
+\newblock Passive acoustic density estimation of sperm whales in the {T}ongue
+  of the {O}cean, {B}ahamas.
+\newblock {\em Marine Mammal Science\/}, {\bf 28}, E444--E455.
+
+\bibitem[{Williams {\em et~al.\/}(2002)Williams, Nichols \&
+  Conroy}]{WilliamsEtAl2002}
+Williams, B.~K., Nichols, J.~D. \& Conroy, M.~J. (2002).
+\newblock {\em Analysis and Management of Animal Populations\/}.
+\newblock Academic Press, San Diego, CA, USA.
+
+\end{thebibliography}
+
+
+\pagebreak
+
+
+\begin{longtable}{p{1.5cm}l p{14cm}}
+\caption[Definitions of parameters and data]{Definitions of parameters and data used in the hierarchical model for automatic detection and double sampling data. Symbols appearing in bold represent vectors or matrices.}
+\label{tab:defs} \\
+%\begin{tabular}{p{1.5cm}l p{14cm}}
+\hline \hline \\
+Parameter & & Definition \\
+\cline{1-1} \cline{3-3}
+\endfirsthead
+\hline \hline \\
+Data & & Definition \\
+\cline{1-1} \cline{3-3}
+\endhead
+\hline
+\endfoot
+\hline
+\endlastfoot
+& & \\
+$N_s$ & & Total abundance of species $s$ in the study area ($=\sum_j N_{js}$)\\
+$N_{js}$ & & Abundance of species $s$ in sampling unit $j$ ($N_{js}=N_{js}^{\rm obs}+N_{js}^*+N_{js}^{**}$)\\
+$N_{js}^{\rm obs}$ & & Number of observed animals in sampling unit $j$ that are truly of species $s$  \\
+$N_{js}^*$ & & Number of undetected animals in surveyed regions of sampling unit $j$ that are of species $s$ \\
+$N_{js}^{**}$ & & Abundance of species $s$ in unsurveyed regions of sampling unit $j$ \\
+$G_{js}$   & & Number of groups of animals of species $s$ located in sampling unit $j$\\
+$G_{js}^{\rm obs}$ & & Number of groups of animals of species $s$ located in the surveyed region of sampling unit $j$ detected by the automatic detection system \\
+$\nu_{js}$ & & The log of abundance intensity for species $s$ in sampling unit $j$\\
+$\tau_{\nu s}$ & & Precision of the log of abundance intensity for species $s$; possibly used to impart overdispersion relative to the Poisson distribution \\
+$\tau_{\eta s}$ & & Precision parameter for spatial random effects associated with species $s$\\
+$\lambda_{js}$ & & Abundance intensity for species $s$ in sampling unit $j$ ($\lambda_{js}=A_j R_j p_{js} \exp(\nu_{js})$)\\
+$\boldsymbol{\beta}_s$ & & Parameters of the linear predictor describing variation in
+        the log of abundance intensity as a function of landscape \& habitat covariates for species $s$\\
+$\boldsymbol{\eta}_s$ & & Vector of spatial random effects for species $s$ \\
+$\boldsymbol{\alpha}_s$ & & Vector of reduced-dimension random effects for species $s$ (when RSR is employed)\\
+$\boldsymbol{\theta}_s$ & & Parameters describing the distribution of individual covariates
+                          at the population level for species $s$ \\
+$S_{ij}$ & & True species associated with the $i$th automatic detection obtained while surveying sampling unit $j$ \\
+$\pi_{ij}^{O|s}$ & & Probability that the $i$th group of animals encountered while surveying sampling unit $j$ are assigned observation type $O$ given that they are truly of species $s$.  \\
+$p_{js}$ & & Probability that a member of species $s$ associated with the area surveyed in sampling
+    unit $j$ is detected ($p_{js}=p_s a_{js}$)\\
+$a_{js}$ & & Probability that an animal of species $s$ is available to be detected at the time(s)
+    when surveys are conducted in sampling unit $j$ (for seals, this is their haul-out probability)\\
+$p_s$ & & Probability that a member of species $s$ will be detected by the automatic detection system given that it is available to be detected \\
+%Data & & Definition \\
+%\cline{1-1} \cline{3-3}
+$Y_{j}$ & & Total count of automatic detections recorded during surveys of sampling unit $j$\\
+$Z_{ijk}$   & &  The value of the $k$th individual covariate associated with automatic detection $i$
+                in sampling unit $j$\\
+$I_{ij}$  & & Indicator for whether the $i$th automatic detection recorded in the $j$th sampling unit was
+        also subject to double sampling \\
+${\bf X}_s$   & & Design matrix associated with abundance intensity model for species $s$\\
+$A_j$   & & The area of sampling unit $j$ (perhaps scaled to its mean)\\
+$R_j$  & & Proportion of sampling unit $j$ that is sampled via the automatic detection method during the survey\\
+$O_{ij}$ & & Observation type for the $i$th automatic detection in sampling unit $j$ (e.g. observed species) \\
+$J$  & & Total number of sampling units in the study area \\
+$L$  & & Total number of sampling units in the study area that are actually sampled\\
+${\bf W}$ & & Association matrix describing spatial neighborhood structure of sampling units\\
+${\bf Q} $  & & Structure matrix for spatial random effects (note the precision matrix for
+  random effects is given by $\tau_{\eta s})$\\
+${\bf K}_s $  & & Design matrix for spatial random effects when dimension reduction (RSR) is employed\\
+\hline
+%\end{tabular}
+\end{longtable}
+
+\pagebreak
+
+\begin{table}
+\caption{Species classification probabilities used in the hierarchical seal abundance model.  True species
+appear in columns, while observation types occur on rows.  The column (and row) for ``Other" indicate
+non-seals (e.g. thermal anomalies, non-target taxa).}
+\begin{tabular}{llllllll}
+\hline
+& & & \multicolumn{5}{c}{True Species} \\ \cline{4-8}
+Obs Index & Obs species & Confidence & Bearded & Ribbon & Ringed & Spotted & Other \\
+1 & Bearded & Certain & $\pi^{1|1}$ & 0 & 0 & 0 & 0 \\
+2 & Bearded & Likely &  $\pi^{2|1}$ & $\pi^{2|2}$ & $\pi^{2|3}$ & $\pi^{2|4}$ & 0 \\
+3 & Bearded & Guess &  $\pi^{3|1}$ & $\pi^{3|2}$ & $\pi^{3|3}$ & $\pi^{3|4}$ & 0 \\
+4 & Ribbon & Certain & 0 & $\pi^{4|2}$ & 0 & 0 & 0 \\
+5 & Ribbon & Likely & $\pi^{5|1}$ & $\pi^{5|2}$ & $\pi^{5|3}$ & $\pi^{5|4}$ & 0 \\
+6 & Ribbon & Guess & $\pi^{6|1}$ & $\pi^{6|2}$ & $\pi^{6|3}$ & $\pi^{6|4}$ & 0 \\
+7 & Ringed & Certain & 0 & 0 & $\pi^{7|3}$ & 0 & 0 \\
+8 & Ringed & Likely & $\pi^{8|1}$ & $\pi^{8|2}$ & $\pi^{8|3}$ & $\pi^{8|4}$ & 0 \\
+9 & Ringed & Guess & $\pi^{9|1}$ & $\pi^{9|2}$ & $\pi^{9|3}$ & $\pi^{9|4}$ & 0 \\
+10 & Spotted & Certain & 0 & 0 & 0 & $\pi^{10|4}$ & 0 \\
+11 & Spotted & Likely & $\pi^{11|1}$ & $\pi^{11|2}$ & $\pi^{11|3}$ & $\pi^{11|4}$ & 0 \\
+12 & Spotted & Guess & $\pi^{12|1}$ & $\pi^{12|2}$ & $\pi^{12|3}$ & $\pi^{12|4}$ & 0 \\
+13 & Other & NA & 0 & 0 & 0 & 0 & 1 \\
+14 & Unknown & NA & $\pi^{14|1}$ & $\pi^{14|2}$ & $\pi^{14|3}$ & $\pi^{14|4}$ & 0 \\
+\hline
+\end{tabular}
+\vspace{2cm}
+\label{tab:confuse}
+\end{table}
+
+
+\pagebreak
+
+\begin{figure}
+\begin{center}
+%\includegraphics[width= \textwidth]{DAG_BOSS.pdf}
+%\includegraphics{DAG_BOSS.pdf}
+\end{center}
+\caption{Directed, acyclic graph for the model proposed for multi-species abundance estimation from thermal imagery and digital photography (adapted from Conn et al. 2013, Fig. A1).  Notation is defined in Table \ref{tab:defs} (subscripts and superscripts omitted for clarity).}
+\label{fig:DAG}
+\end{figure}
+
+\begin{figure}
+\begin{center}
+%\includegraphics[width= \textwidth]{sim_estimated2.pdf}
+\end{center}
+\caption{Simulated (left panels) and estimated (right panels) abundance across a landscape for five hypothetical species.  Red
+circles on estimated abundance panels indicate sampled cells.}
+\label{fig:sim_est}
+\end{figure}
+
+\begin{figure}[H]
+\begin{center}
+%\includegraphics[width= \textwidth]{Seal_hotspot.pdf}
+\end{center}
+\caption{A composite image showing a high-resolution digital photograph (left) with a matched
+thermal hot spot (right).  Thermal videos are screened for such hot spots, and corresponding
+photographs are searched (when available) to provide information on species identity.}
+\label{fig:hotspot}
+\end{figure}
+
+\begin{figure}
+\begin{center}
+%\includegraphics[width= 0.8\textwidth]{flights.pdf}
+\end{center}
+\caption{Map of eastern Bering Sea study area showing $25 \times 25$km sampling units and
+   survey lines for flights that were included in the analysis.  The western boundary of the study area was determined by the U.S. Exclusive Economic Zone (EEZ); the southern boundary was determined by limiting analysis to cells that had $\ge$1\% sea ice for at least one day from April 1, 2012 - May 20, 2012.  Cells comprised of $>$99\% land were excluded from analysis.}
+\label{fig:flights}
+\end{figure}
+
+\begin{figure}
+\begin{center}
+%\includegraphics[width= \textwidth]{sim_est_N.pdf}
+\end{center}
+\caption{Posterior predictive distributions for species abundance as estimated from simulated data.  True values are indicated
+in red.}
+\label{fig:sim_N}
+\end{figure}
+
+\begin{figure}
+\begin{center}
+%\includegraphics[width= \textwidth]{covariates.pdf}
+\end{center}
+\caption{Covariates assembled to help predict seal abundance in the eastern Bering Sea. Covariates include average proportion of sea ice while surveys were conducted (``ice\_conc"), distance from 1000m depth contour (``dist\_shelf"), distance from mainland (``dist\_mainland"), distance from 10\% sea ice contour (``dist\_contour"), distance from southern sea ice edge (``dist\_edge"), and ecoregion \citep[see][]{PiattSpringer2007}.  All covariates other than ice\_conc and ecoregion were standardized to have a mean of 1.0 prior to plotting and analysis.  Unsampled ecoregions were combined with the closest sampled ecoregion for estimation. }
+\label{fig:covs}
+\end{figure}
+
+\begin{figure}[htb!]
+\begin{center}
+%\begin{tabular}{ c }
+%\includegraphics[height=155pt]{HORib.pdf}
+%\includegraphics[height=155pt]{HOBea.pdf}
+%\includegraphics[height=155pt]{HOSpo.pdf}
+%\end{tabular}
+\end{center}
+\caption{Predicted haul-out (availability) probability as a function of day-of-year and time-of-day for each species.  Note that estimates are currently unavailable for ringed seals.}
+\label{fig:HO}
+\end{figure}
+
+\begin{figure}
+\begin{center}
+%\includegraphics[width= \textwidth]{N_hists.pdf}
+\end{center}
+\caption{Posterior predictive distributions of seal abundance in the eastern Bering Sea from Model 1.  Estimates of ringed seal abundance are uncorrected for haul-out (availability) probability.}
+\label{fig:N}
+\end{figure}
+
+\begin{figure}
+\begin{center}
+%\includegraphics[width= \textwidth]{species_maps.pdf}
+\end{center}
+\caption{Mean posterior predictions of seal abundance across our study area in the eastern Bering Sea.  Legends indicate posterior predictions of abundance in $25 \times 25$km grid cells.  Abundance for ``other" indicates abundance of other heat signatures that were not seals (e.g. sea lions, walrus, melt pools, birds).}
+\label{fig:dists}
+\end{figure}
+
+\begin{figure}
+\begin{center}
+%\includegraphics[width= \textwidth]{ice_eff2.pdf}
+\end{center}
+\caption{Mean posterior prediction of abundance for each seal species as a function of sea ice concentration.  Predictions for each species were made by setting all other modeled covariates to their means, so that they are best interpreted as the relative effect of sea ice on a species-specific basis (absolute values of predictions are not necessarily biologically meaningful).  For instance, predicted ribbon seal abundance was calculated by averaging predicted abundance over all ecoregions, some of which had a predicted abundance near zero.}
+\label{fig:ice_eff}
+\end{figure}
+
+\end{flushleft}
+\end{document} 

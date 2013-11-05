@@ -6,13 +6,13 @@
 #' @export
 #' @keywords distance sampling, simulation
 #' @author Paul B. Conn
-simulate_BOSS<-function(S,prop.photo=1,n.sampled,misID=1,ZIP=TRUE,tau.pois=15,tau.bern=20){
+simulate_BOSS<-function(S,prop.photo=1,n.sampled,misID=1,ZIP=TRUE,thin=TRUE,tau.pois=15,tau.bern=20){
   #note: currently hardwired for 4 species and an anomaly category
 	require(mvtnorm)
   library(hierarchicalDS)
 	#set.seed(122412)
   Sampled.cells=sample(S,n.sampled)
-  Area=0.1 #proportion of each cell surveyed
+  Area=0.2 #proportion of each cell surveyed
   n.species=1
 	
   if((sqrt(S)%%1)!=0)cat("Error: S must be a square #")
@@ -36,6 +36,9 @@ simulate_BOSS<-function(S,prop.photo=1,n.sampled,misID=1,ZIP=TRUE,tau.pois=15,ta
     SP.bern=0*SP.bern
 	  Eta.bern=0*Eta.bern
   }
+  
+  Thin=matrix(rnorm(7*24,0.5,0.1),7,24)
+  DayHour=data.frame(day=sample(c(1:7),n.sampled,replace=TRUE),hour=sample(c(1:24),n.sampled,replace=TRUE))
 
 	#process parameters
 	Lambda.grp=0.1
@@ -52,7 +55,9 @@ simulate_BOSS<-function(S,prop.photo=1,n.sampled,misID=1,ZIP=TRUE,tau.pois=15,ta
   N=matrix(0,1,S)
   for(i in 1:1)N[i,]=rbern(S,pnorm(X.bern%*%Beta.bern[i,]+Eta.bern[,i]))*(rpois(S,exp(X.site%*%Beta.pois[i,]+Eta.pois[,i])))
   N.sampled=matrix(0,5,n.sampled)
-  for(i in 1:1)N.sampled[i,]=rbinom(n.sampled,N[i,Sampled.cells],Area)
+  Cur.thin=rep(0,n.sampled)
+  for(i in 1:n.sampled)Cur.thin[i]=Thin[DayHour[i,1],DayHour[i,2]]
+  for(i in 1:1)N.sampled[i,]=rbinom(n.sampled,N[i,Sampled.cells],Area*Cur.thin)
   True.species=rep(1,sum(N.sampled[1,]))
  
   G.tot=apply(N,1,'sum')
@@ -105,6 +110,6 @@ simulate_BOSS<-function(S,prop.photo=1,n.sampled,misID=1,ZIP=TRUE,tau.pois=15,ta
     names(Levels)=colnames(Dat[,which.factors])
   }
   if(misID==FALSE)Psi=NULL	
-	Out=list(Dat=Dat,G.tot=G.tot,G.true=N,True.species=True.species,Sampled.cells=Sampled.cells,Psi=Psi)
+	Out=list(Dat=Dat,G.tot=G.tot,G.true=N,True.species=True.species,Sampled.cells=Sampled.cells,Psi=Psi,Thin=Thin,DayHour=DayHour)
 }
 

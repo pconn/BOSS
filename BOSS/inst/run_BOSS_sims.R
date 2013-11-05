@@ -106,13 +106,13 @@
 	N.tot=matrix(0,n.species,dim(Out$Post$N)[2])
 	for(iiter in 1:dim(Out$Post$N)[2])N.tot[,iiter]=apply(Out$Post$N[,iiter,],1,'sum')
 	par(mfrow=c(2,2))
-	hist(N.tot[1,],main='Species 1',xlab='',freq=FALSE,ylab='Posterior density')
+	hist(N.tot[1,],main='Species 1',xlab='',freq=FALSE,ylab='Posterior density',cex.lab=1.3,cex.axis=1.3)
   abline(v=Sim$G.tot[1]*1.1,col='red',lwd=2)
-	hist(N.tot[2,],main='Species 2',xlab='',freq=FALSE,ylab='Posterior density')
+	hist(N.tot[2,],main='Species 2',xlab='',freq=FALSE,ylab='Posterior density',cex.lab=1.3,cex.axis=1.3)
 	abline(v=Sim$G.tot[2]*1.2,col='red',lwd=2)
-  hist(N.tot[3,],main='Species 3',xlab='Abundance',freq=FALSE,ylab='Posterior density')
+  hist(N.tot[3,],main='Species 3',xlab='Abundance',freq=FALSE,ylab='Posterior density',cex.lab=1.3,cex.axis=1.3)
 	abline(v=Sim$G.tot[3]*1.3,col='red',lwd=2)
-  hist(N.tot[4,],main='Species 4',xlab='Abundance',freq=FALSE,ylab='Posterior density')
+  hist(N.tot[4,],main='Species 4',xlab='Abundance',freq=FALSE,ylab='Posterior density',cex.lab=1.3,cex.axis=1.3)
 	abline(v=Sim$G.tot[4]*1.4,col='red',lwd=2)
 	
   
@@ -134,7 +134,7 @@
 	library(plyr)
 	library(grid)
   
-  #pdf(file="sim_sampled.pdf")
+  #png(file="sim_sampled.png")
 	theme_xy=theme(axis.ticks = element_blank(), axis.text = element_blank(),panel.grid.major = element_blank(),
 	                panel.grid.minor = element_blank(),panel.background = element_blank(),legend.key.size=unit(0.5,'cm'))
 	theme_y=theme(axis.ticks = element_blank(), axis.text = element_blank(),panel.grid.major = element_blank(),
@@ -144,9 +144,10 @@
 	theme_no=theme(axis.ticks = element_blank(), axis.text = element_blank(),panel.grid.major = element_blank(),
 	               panel.grid.minor = element_blank(),panel.background = element_blank(),legend.key.size=unit(0.5,'cm'),axis.title.x=element_blank(),axis.title.y=element_blank())
   p0=ggplot(tmp2)+aes(Easting,Northing,fill=Sampled)+geom_raster()+scale_fill_manual(breaks=c("0","1"),labels=c("N","Y"),values=c("grey","red"))+tmp.theme
-	#dev.off()
+  #p0
+  #dev.off()
   
-  pdf(file="sim_estimated2.pdf")
+  png(file="sim_estimated2.png")
 	pushViewport(viewport(layout=grid.layout(5,2)))
 	p1=ggplot(Plot.dat)+aes(Easting,Northing,fill=Species1)+geom_raster()+scale_fill_gradient2(limits=c(0,90),midpoint=45,low="white",mid="blue",high="black")+theme_xy
 	print(p1,vp=viewport(layout.pos.row=1,layout.pos.col=1))

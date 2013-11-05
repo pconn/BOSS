@@ -34,10 +34,10 @@
 
 \begin{document}
 
-\begin{center} \bf {\large ESTIMATING MULTI-SPECIES ABUNDANCE USING THERMAL VIDEO AND DIGITAL PHOTOGRAPHY: ICE-ASSOCIATED SEALS IN THE EASTERN BERING SEA}
+\begin{center} \bf {\large ESTIMATING MULTI-SPECIES ABUNDANCE USING AUTOMATED DETECTION SYSTEMS: ICE-ASSOCIATED SEALS IN THE EASTERN BERING SEA}
 
 \vspace{0.7cm}
-Paul B. Conn$^{1*}$, Jay M. Ver Hoef$^1$, Brett T. McClintock$^1$, Erin E. Moreland$^1$, Josh M. London$^1$, Michael F. Cameron$^1$, and Peter L. Boveng$^1$
+Paul B. Conn$^{1*}$, Jay M. Ver Hoef$^1$, Brett T. McClintock$^1$, Erin E. Moreland$^1$, Josh M. London$^1$, Michael F. Cameron$^1$, Shawn P. Dahle$^1$, and Peter L. Boveng$^1$
 \end{center}
 \vspace{0.5cm}
 
@@ -51,18 +51,52 @@ Paul B. Conn$^{1*}$, Jay M. Ver Hoef$^1$, Brett T. McClintock$^1$, Erin E. Morel
 \raggedbottom
 
 \begin{center}
-Appendix S1: Gibbs sampling and full conditional distributions for estimating animal abundance
-from a combination of thermal imagery and digital photography
+Appendix S1: Further mathematical details for estimating animal abundance
+from a combination of automatic detection and double sampling data
 \bigskip
 \end{center}
 
-We use a hybrid Metropolis-Gibbs sampler \citep[cf.][]{GelmanEtAl2004} to iteratively sample from full conditional distributions
-of model parameters.  For each iteration of the Markov chain, we sample full conditionals as follows (note that notation is defined in Table 1 of the article):
+\doublespacing
+The joint posterior distribution for the hierarchical model proposed in the main article can be factored (up to a proportionality constant) as
+\begin{linenomath*}
+\begin{eqnarray}
+  \lefteqn{[\boldsymbol{\beta},\boldsymbol{\eta},\boldsymbol{\nu},\boldsymbol{S},\boldsymbol{\tau}_\eta,\boldsymbol{\tau}_\nu,
+  {\bf p},\boldsymbol{\theta},\boldsymbol{\pi} | {\bf O},{\bf Z}] \propto }
+  \label{eq:joint_post}
+  \\
+  & & [\boldsymbol{\nu}|\boldsymbol{\beta},\boldsymbol{\eta},\boldsymbol{\tau}_\nu][\boldsymbol{\eta}|\boldsymbol{\tau}_\eta][\boldsymbol{\tau}_\eta][\boldsymbol{\tau}_\nu][\boldsymbol{\beta}] \nonumber \\
+  & \times & [{\bf S} | \boldsymbol{\nu}, {\bf p}][{\bf p}] \nonumber \\
+  & \times & [{\bf O} | {\bf S},\boldsymbol{\pi}][\boldsymbol{\pi}] \nonumber \\
+  & \times & [{\bf Z} | {\bf S},\boldsymbol{\theta}][\boldsymbol{\theta}], \nonumber
+\end{eqnarray}
+\end{linenomath*}
+where $[X|Y]$ denotes the conditional distribution of X given Y (recall that notation is defined in Table 1 of the main article).  Note that all symbols are bold in Eq. \ref{eq:joint_post} as they all represent vectors or matrices.
+We will refer to the components of Eq. \ref{eq:joint_post} as our ``Spatial regression model," ``Local abundance model," ``Species misclassification model," and ``Individual covariate model," respectively.
+
+\hspace{.5in}To eliminate parameter redundancy and confounding between spatial regression parameters and spatial random effects, we also considered a restricted spatial regression \citep[RSR;][]{ReichEtAl2006,HodgesReich2010,HughesHaran2013} version of the spatial regression model.  Used recently in analysis of occupancy \citep{JohnsonEtAl2013} and resource selection \citep{HootenEtAl2013} data, the RSR approach works by explicitly defining the spatial process to be orthogonal to the fixed effects structure (so that spatial smoothing effectively occurs on the residuals).  Dimension reduction is accomplished by restricting spatial random effects to those associated with large, positive eigenvalues of the Moran operator matrix on the residual projection.  More specifically, we set
+$\boldsymbol{\eta}_s = {\bf K}_s\boldsymbol{\alpha}_s$, where
+\begin{linenomath*}
+\begin{equation*}
+ \boldsymbol{\alpha}_s \sim \mathcal{N} \left( {\bf 0},(\tau_{\eta s}{\bf K}_s^\prime{\bf Q} {\bf K}_s)^{-1} \right),
+\end{equation*}
+\end{linenomath*}
+and ${\bf K}_s$ gives a design matrix for random effects, determined
+as follows \citep{JohnsonEtAl2013}:
+\begin{enumerate}
+  \item Define the residual projection matrix ${\bf P}_s^\perp={\bf I}-{\bf X}_s({\bf X}_s^\prime{\bf X}_s)^{-1}{\bf X}_s^\prime$
+  \item Calculate the Moran operator matrix $\boldsymbol{\Omega}_s=J{\bf P}_s^\perp {\bf W}{\bf P}_s^\perp/{\bf 1}^\prime {\bf W} {\bf 1}$
+  \item Define ${\bf K}_s$ as an $(J \times m)$ matrix, where the columns of ${\bf K}_s$ are composed of the eigenvectors  associated with the largest $m$ eigenvalues of $\boldsymbol{\Omega}$.  In practice, a number of criteria could be used to select $m$; Hughes and Haran (\citeyear{HughesHaran2013}) examined performance of different values of $m$ in a range of conditions on a $50 \times 50$ lattice, showing that $m=50$ to 100 often leads to similar estimator performance as higher values. We set $m=50$ in subsequent models with spatial random effects.
+\end{enumerate}
+This formulation has several advantages: fixed effects retain their primacy as explanatory variables, course-scale spatial pattern in residuals is accounted for, and the computational burden is substantially
+reduced when compared to the full-dimensional ICAR model.
+
+\hspace{.5in} We used a hybrid Metropolis-Gibbs sampler \citep[cf.][]{GelmanEtAl2004} to iteratively sample from full conditional distributions
+of model parameters.  For each iteration of the Markov chain, we sample full conditionals as follows:
 
 \begin{enumerate}
   \item Sample regression parameters describing species-landscape covariate relationships using
   \begin{equation*}
-  [\boldsymbol{\beta}_s|\hdots]={\rm Normal}(({\bf X_s}^\prime {\bf X_s})^{-1}{\bf X_s}^\prime \boldsymbol{\nu}_s,(\tau_{\nu s}+\tau_\beta)^{-1}({\bf X}_s^\prime {\bf X})_s^{-1}).
+  [\boldsymbol{\beta}_s|\hdots]={\rm Normal}(({\bf X_s}^\prime {\bf X_s})^{-1}{\bf X_s}^\prime (\boldsymbol{\nu}_s-\boldsymbol{\eta}_s),(\tau_{\nu s}+\tau_\beta)^{-1}({\bf X}_s^\prime {\bf X})_s^{-1}).
   \end{equation*}
   This formulation implies an ${\rm MVN}({\bf 0},(\tau_\beta X_s^\prime X_s)^{-1})$ prior distribution
   on regression parameters, where $\tau_\beta$ is a prior precision parameter (we set $\tau_\beta=0.01$ in subsequent applications). \\
@@ -72,7 +106,7 @@ of model parameters.  For each iteration of the Markov chain, we sample full con
   \begin{equation*}
   N({\bf X}_s \boldsymbol{\beta}_s + \boldsymbol{\eta},\tau_s^{-1})\times
     {\rm Poisson}(G_{js}^{\rm obs};\lambda_{js}).
-  \end{equation*} 
+  \end{equation*}
   A tuning phase can be employed to adapt the kernel for random walk proposals to be in the optimal [0.30,0.40] range \citep{GelmanEtAl2004}.
   \\
 
@@ -92,11 +126,11 @@ of model parameters.  For each iteration of the Markov chain, we sample full con
   \item If estimated, $\tau_{\nu s}$ can also be updated using a Gibbs step when assuming a conjugate
       ${\rm Gamma}(a,b)$ prior.  The full conditional in this case is ${\rm Gamma}(0.5L+a,0.5 \boldsymbol{\Delta}_s^\prime \boldsymbol{\Delta}_s +b)$, where $\boldsymbol{\Delta}_s=\boldsymbol{\nu}_s-{\bf X}_s \boldsymbol{\beta}_s-\boldsymbol{\eta}_s$ \\
 
-  \item For hotspots with $I_{ij}=0$, simulate species from a categorical distribution with probabilities proportional to $\lambda_{js}$, $s \in [1,S]$.  Simulate individual covariates for these observations directly from $f(\boldsymbol{\theta}_s)$ \\
+  \item For automatic detections with $I_{ij}=0$, simulate species from a categorical distribution with probabilities proportional to $\lambda_{js}$, $s \in [1,S]$.  Simulate individual covariates for these observations directly from $f(\boldsymbol{\theta}_s)$ \\
 
-  \item For hotspots with $I_{ij}=1$, update true species identity $S_{ij}$ using a Metropolis-Hastings step.  Species proposals are generated by sampling from $\rm{Uniform}\{1,2,\hdots,S\}$.  The full conditional distribution has contributions from the Poisson abundance model, the covariate model, and the species identification model.  Specifically, the full conditional distribution for species identity being $S_{ij}=s$ is proportional to
+  \item For automatic detections with $I_{ij}=1$, update true species identity $S_{ij}$ using a Metropolis-Hastings step.  Species proposals are generated by sampling from $\rm{Uniform}\{1,2,\hdots,S\}$.  The full conditional distribution has contributions from the Poisson abundance model, the covariate model, and the species identification model.  Specifically, the full conditional distribution for species identity being $S_{ij}=s$ is proportional to
       \begin{equation*}
-        \lambda_{js} \pi^{[O_{ij}|s]} \prod_k f_k(Z_{ijk} ; \boldsymbol{\theta}_s)
+        \lambda_{js} \pi^{O_{ij}|s} \prod_k f_k(Z_{ijk} ; \boldsymbol{\theta}_s)
       \end{equation*} \\
 
   \item For each individual covariate, update parameters of covariate distributions.  For instance, if species $s$ group sizes are assumed to follow a zero-truncated ${\rm Poisson}(\theta_s)$ distribution (as we assume in worked examples), selection of a conjugate ${\rm Gamma}(a,b)$ prior distribution allows the parameter $\theta_s$ to be updated via a Gibbs step where
@@ -107,13 +141,13 @@ of model parameters.  For each iteration of the Markov chain, we sample full con
 
   \item Update thinning parameters, $p_{js}$, using an independence chain.  Since there is little information to estimate these parameters from survey data, our strategy is to use posterior predictions from an auxiliary analysis as both a prior distribution and proposal distribution for ${\bf p}$ during abundance analysis (see e.g. \texttt{Example}).  We update the vector of thinning parameters using a Metropolis-Hastings step, with full conditional distribution proportional to \begin{equation*}
       \prod_j \prod_s {\rm Poisson}(G_{js}^{\rm obs};A_j R_j p_{js} \exp(\nu_{js})).
-      \end{equation*} 
+      \end{equation*}
       As proposals are iid, there is no need for tuning.\\
 
   \item Update species misclassification parameters, $\boldsymbol{\pi}$ using an independence chain.  As with
       updates of ${\bf p}$, we use an informative prior on $\boldsymbol{\pi}$ as the proposal distribution within a Metropolis-Hastings step.  The full conditional is then simply
       \begin{equation*}
-        \prod_j \prod_s \prod_i (1-I_{ij})+I_{ij} \pi^{[O_{ij}|S_{ij}]}.
+        \prod_j \prod_s \prod_i (1-I_{ij})+I_{ij} \pi^{O_{ij}|S_{ij}}.
       \end{equation*}
           As proposals are iid, there is no need for tuning.
 \end{enumerate}
@@ -125,7 +159,7 @@ using the same set of distributional assumptions we used to estimate parameters.
 \begin{equation*}
    G_m = \sum_j \parallel {\bf O}_{j}^{\rm rep} - {\bf O}_j^{\rm obs} \parallel ^2,
 \end{equation*}
-where ${\bf O}_{j}$ gives a vector summarizing the total number of observations in cell $j$ that were
+where ${\bf O}_{j}$ gives a vector summarizing the total number of observations in sampling unit $j$ that were
  of each observation type; the superscript denotes whether the data were simulated ('rep') or observed
  ('obs').
 

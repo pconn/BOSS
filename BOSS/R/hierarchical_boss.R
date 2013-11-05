@@ -3,7 +3,7 @@
 #' the user needs to call themselves. 
 #'
 #' @param Dat 	A data frame with the following columns:
-#' 		(1)transect ID; 
+#' 		(1)numeric transect ID (1 to # of transects)
 #' 		(2)photo obtained (0/1) ? 
 #' 		(3) Observation type (integer - the max integer being 'unknown' if applicable) [NOTE: modeled as factor, but need to be input as integers to account for unknown species observations]
 #' 		(4-x)(Observer covariates); (things like survey conditions or observer skill that affect misID; things that don't change during a transect.  Note these also need to be provided in Obs.cov)

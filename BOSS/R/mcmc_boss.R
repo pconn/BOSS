@@ -203,7 +203,9 @@ mcmc_boss<-function(Par,Dat,Psi,cur.iter,adapt,Control,DM.hab.pois,DM.hab.bern=N
   
   
 	Sampled=unique(Meta$Mapping)
-	n.unique=length(Sampled)
+	n.unique=length(Sampled)  
+ 	DM.hab.pois.sampled=DM.hab.pois
+  for(isp in 1:Meta$n.species)DM.hab.pois.sampled[[isp]]=matrix(DM.hab.pois[[isp]][Sampled,],ncol=ncol(DM.hab.pois[[isp]]))
 	Sampled.area.by.strata=rep(0,n.unique)
 	for(i in 1:Meta$n.transects)Sampled.area.by.strata[Sampled==Meta$Mapping[i]]=Sampled.area.by.strata[which(Sampled==Meta$Mapping[i])]+Meta$Area.trans[i]
 	
@@ -267,9 +269,16 @@ mcmc_boss<-function(Par,Dat,Psi,cur.iter,adapt,Control,DM.hab.pois,DM.hab.bern=N
 	PROFILE=FALSE  #outputs time associated with updating different groups of parameters
 	DEBUG=FALSE
 	if(DEBUG){
-		Par$misID[[1]]=2
-		Par$misID[[2]]=1
-		Par$misID[[3]]=3
+    #set initial values as in "spatpred" GLMM for comparison
+    Which.pos=which(G.transect[1,]>0)
+    Offset=Meta$Area.hab[Mapping]*Sampled.area.by.strata
+    Par$Nu[1,Mapping[Which.pos]]=log(G.transect[1,Which.pos]/Offset[Which.pos])
+    Par$Nu[1,-Mapping[Which.pos]]=min(Par$Nu[1,Mapping[Which.pos]])
+    Par$hab.pois[1,1]=mean(Par$Nu)
+    Par$tau.eta.pois=100
+    Par$tau.nu=100
+    Par$Eta.pois[1,]=rep(0,1299)
+    set.seed(12345)
 	}
 	st <- Sys.time()
 	##################################################
@@ -298,7 +307,7 @@ mcmc_boss<-function(Par,Dat,Psi,cur.iter,adapt,Control,DM.hab.pois,DM.hab.bern=N
 		  G.sampled=rep(0,n.unique) #total number of groups currently in each sampled strata
 		  for(i in 1:Meta$n.transects)G.sampled[Sampled==Meta$Mapping[i]]=G.sampled[Sampled==Meta$Mapping[i]]+Meta$G.transect[isp,i]
 		  Cur.thin=get_thin(Meta$Thin,Thin.pl,isp,thin.pl)
-      for(i in 1:n.unique){
+      for(i in 1:n.unique){  #could be vectorized!
         if(Z[isp,Sampled[i]]==1){
 		      prop=Par$Nu[isp,Sampled[i]]+runif(1,-Control$MH.nu[isp,i],Control$MH.nu[isp,i])				
 		      old.post=dnorm(Par$Nu[isp,Sampled[i]],Mu[Sampled[i]],1/sqrt(Par$tau.nu[isp]),log=TRUE)+dpois(G.sampled[i],Sampled.area.by.strata[i]*exp(Par$Nu[isp,Sampled[i]])*Meta$Area.hab[Sampled[i]]*Cur.thin[i],log=TRUE)
@@ -322,11 +331,7 @@ mcmc_boss<-function(Par,Dat,Psi,cur.iter,adapt,Control,DM.hab.pois,DM.hab.bern=N
 		    cat(paste("Nu: ", (Sys.time()-st),'\n'))
 		    st=Sys.time()
 		  } 
-			########## update abundance parameters at the strata scale   ################
-      #if(iiter==1035){
-      #  cat("\n Par$G \n")
-      #  print(Par$G)
-      #}
+
 
       #update spatial random effects
 			if(Meta$spat.ind==FALSE){
@@ -400,11 +405,6 @@ mcmc_boss<-function(Par,Dat,Psi,cur.iter,adapt,Control,DM.hab.pois,DM.hab.bern=N
 			}
 		}
     
-    #if(iiter==1568){
-      #cat(paste("iiter ",iiter,'\n'))
-      #cat("G.transect \n")
-      #cat(G.transect)
-    #}
 
     if(length(Which.no.photo)>0){
       ########## update species for observations without photos
@@ -456,7 +456,7 @@ mcmc_boss<-function(Par,Dat,Psi,cur.iter,adapt,Control,DM.hab.pois,DM.hab.bern=N
 		    Dat[Which.photo[Which.sampled[isamp]],"Species"]=Prop.sp[isamp]
 		  }
 		}
-		
+ 		
 		if(PROFILE==TRUE){
 		  cat(paste("True species: ", (Sys.time()-st),'\n'))
 		  st=Sys.time()
@@ -474,6 +474,7 @@ mcmc_boss<-function(Par,Dat,Psi,cur.iter,adapt,Control,DM.hab.pois,DM.hab.bern=N
       Par$G[isp,Mapping]=Par$G[isp,Mapping]+rpois(Meta$n.transects,Meta$Covered.area[Mapping]*(1-get_thin(Meta$Thin,Thin.pl,isp,thin.pl)))
       grp.lam[isp]=ifelse(Meta$Cov.prior.pdf[isp,1] %in% c("pois1_ln","poisson_ln"),exp(Par$Cov.par[isp,1,1]+(Par$Cov.par[isp,2,1])^2/2),Par$Cov.par[isp,1,1])
       Par$N[isp,]=Par$G[isp,]+rpois(Meta$S,grp.lam[isp]*Par$G[isp,]) #add the Par$G since number in group > 0 
+      #if(sum(is.na(Par$N[isp,]))>0)cat(paste('G ',Par$G[isp,],' grp.lam ',grp.lam[isp],'\n',sep=''))
       for(ipl in 1:length(Meta$Mapping)){
         Par$G[isp,Meta$Mapping[ipl]]=Par$G[isp,Meta$Mapping[ipl]]+Meta$G.transect[isp,ipl]
         Par$N[isp,Meta$Mapping[ipl]]=Par$N[isp,Meta$Mapping[ipl]]+Meta$N.transect[isp,ipl]
@@ -561,9 +562,10 @@ mcmc_boss<-function(Par,Dat,Psi,cur.iter,adapt,Control,DM.hab.pois,DM.hab.bern=N
 		if(adapt==TRUE){
 			if(iiter%%100==0){
 				for(ipar in 1:Meta$n.species){
-					for(i in 1:n.unique)
-					if(Accept$Nu[ipar,i]<30)Control$MH.nu[ipar,i]=Control$MH.nu[ipar,i]*.95
-					if(Accept$Nu[ipar,i]>40)Control$MH.nu[ipar,i]=Control$MH.nu[ipar,i]*1.053
+					for(i in 1:n.unique){
+					  if(Accept$Nu[ipar,i]<30)Control$MH.nu[ipar,i]=Control$MH.nu[ipar,i]*.95
+					  if(Accept$Nu[ipar,i]>40)Control$MH.nu[ipar,i]=Control$MH.nu[ipar,i]*1.053
+				  }
 				}
 				Accept$Nu=Accept$Nu*0
 				#Accept$MisID=lapply(Accept$MisID,function(x)x*0)
@@ -597,9 +599,8 @@ mcmc_boss<-function(Par,Dat,Psi,cur.iter,adapt,Control,DM.hab.pois,DM.hab.bern=N
         for(isp in 1:Meta$n.species){
           Hab.pois=Par$hab.pois[isp,1:Meta$N.hab.pois.par[isp]]
           Eta.pois=Par$Eta.pois[isp,]
-          
-          Mu=DM.hab.pois[[isp]][Sampled,]%*%Par$hab.pois[isp,1:Meta$N.hab.pois.par[isp]]+Par$Eta.pois[isp,Sampled]
-			    Cur.lam=exp(rnorm(n.unique,Mu,1/sqrt(Par$tau.nu[isp])))*Meta$Area.hab[Sampled] 
+          Mu=DM.hab.pois.sampled[[isp]]%*%Par$hab.pois[isp,1:Meta$N.hab.pois.par[isp]]+Par$Eta.pois[isp,Sampled]
+          Cur.lam=exp(rnorm(n.unique,Mu,1/sqrt(Par$tau.nu[isp])))*Meta$Area.hab[Sampled] 
           if(Meta$ZIP){
             Mu=DM.hab.bern[[isp]][Sampled,]%*%Par$hab.bern[isp,1:Meta$N.hab.bern.par[isp]]+Par$Eta.bern[isp,Sampled]
 			      Cur.lam=Cur.lam*(rnorm(n.unique,Mu,1)>0)

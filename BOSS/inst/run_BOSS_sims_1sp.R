@@ -14,7 +14,8 @@
 	
 	n.transects=100 #one transect per cell
 	set.seed(22222) 
-	ZIP=TRUE 
+	ZIP=FALSE
+  thin=TRUE
   misID=FALSE
 	spat.ind=TRUE #do not make spatially independent; i.e. estimate spatial autocorrelation!
   tau.pois=10000
@@ -22,8 +23,11 @@
   tau.bern=10000
   if(spat.ind==FALSE)tau.bern=20
   prop.photo=0.5
-	Sim=simulate_BOSS(S=S,prop.photo=prop.photo,n.sampled=n.transects,misID=misID,ZIP=ZIP,tau.pois=tau.pois,tau.bern=tau.bern)
+	Sim=simulate_BOSS(S=S,prop.photo=prop.photo,n.sampled=n.transects,misID=misID,ZIP=ZIP,thin=thin,tau.pois=tau.pois,tau.bern=tau.bern)
 	Dat=Sim$Dat
+  DayHour=Sim$DayHour
+  Thin=array(0,dim=c(1,7,24,100))
+  for(i in 1:100)Thin[1,,,i]=rnorm(7*24,Sim$Thin,.03)
   
   Psi=NULL
   #2) declare inputs and call hierarchical model; 
@@ -31,7 +35,7 @@
 	n.obs.cov=0 #1 observer covariate, "Seat" is included in the dataset even though it isn't modeled
 	Adj=square_adj(sqrt(S))
 	Mapping=Sim$Sampled.cells
-	Area.trans=rep(0.1,n.transects)
+	Area.trans=rep(0.2,n.transects)
 	Area.hab=rep(1,S)
   Prop.photo=rep(prop.photo,n.transects)  #proportion of surveyed area in each transect that is photographed (used in post. loss calcs)
 	Hab.cov=data.frame(rep(log(c(1:sqrt(S)/sqrt(S))),each=sqrt(S))) #covariate on abundance intensity same as used to generate data
@@ -68,7 +72,7 @@
 	Prior.pars=list(a.eta=1,b.eta=.01,a.nu=1,b.nu=.01,beta.tau=0.01) #(1,.01) prior makes it closer to a uniform distribution near the origin
 	adapt=TRUE	
 	set.seed(8327329)   #chain1
-	Out=hierarchical_boss(Dat=Dat,Adj=Adj,Area.hab=Area.hab,Mapping=Mapping,Area.trans=Area.trans,Prop.photo=Prop.photo,Hab.cov=Hab.cov,Obs.cov=Obs.cov,n.obs.cov=n.obs.cov,Hab.pois.formula=Hab.pois.formula,Hab.bern.formula=Hab.bern.formula,Cov.prior.pdf=Cov.prior.pdf,Cov.prior.parms=Cov.prior.parms,Cov.prior.fixed=Cov.prior.fixed,Cov.prior.n=Cov.prior.n,ZIP=ZIP,spat.ind=spat.ind,fix.tau.nu=fix.tau.nu,srr=srr,srr.tol=srr.tol,Inits=Inits,grps=grps,Control=Control,adapt=adapt,Prior.pars=Prior.pars,Psi=Psi,post.loss=post.loss)
+	Out=hierarchical_boss(Dat=Dat,Adj=Adj,Area.hab=Area.hab,Mapping=Mapping,Area.trans=Area.trans,Thin=Thin,DayHour=DayHour,Prop.photo=Prop.photo,Hab.cov=Hab.cov,Obs.cov=Obs.cov,n.obs.cov=n.obs.cov,Hab.pois.formula=Hab.pois.formula,Hab.bern.formula=Hab.bern.formula,Cov.prior.pdf=Cov.prior.pdf,Cov.prior.parms=Cov.prior.parms,Cov.prior.fixed=Cov.prior.fixed,Cov.prior.n=Cov.prior.n,ZIP=ZIP,spat.ind=spat.ind,fix.tau.nu=fix.tau.nu,srr=srr,srr.tol=srr.tol,Inits=Inits,grps=grps,Control=Control,adapt=adapt,Prior.pars=Prior.pars,Psi=Psi,post.loss=post.loss)
 
   ###3) plot and summarize results; note that chain would need to be run a lot longer to summarize the posterior very well!!!
   #plot(Out$MCMC)
