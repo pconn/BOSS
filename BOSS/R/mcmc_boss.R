@@ -133,7 +133,7 @@ mcmc_boss<-function(Par,Dat,Psi,cur.iter,adapt,Control,DM.hab.pois,DM.hab.bern=N
 	grp.lam=rep(0,Meta$n.species)
 	
 	
-	#initialize statistics/matrices needed for MCMC updates
+	#initialize statistics/matrices needed for MCMC updates - start with all cells (these redefined for sampled cells below)
 	XpXinv.pois=vector('list',Meta$n.species)
 	XpXinvXp.pois=XpXinv.pois
 	for(isp in 1:Meta$n.species){
@@ -208,7 +208,24 @@ mcmc_boss<-function(Par,Dat,Psi,cur.iter,adapt,Control,DM.hab.pois,DM.hab.bern=N
   for(isp in 1:Meta$n.species)DM.hab.pois.sampled[[isp]]=matrix(DM.hab.pois[[isp]][Sampled,],ncol=ncol(DM.hab.pois[[isp]]))
 	Sampled.area.by.strata=rep(0,n.unique)
 	for(i in 1:Meta$n.transects)Sampled.area.by.strata[Sampled==Meta$Mapping[i]]=Sampled.area.by.strata[which(Sampled==Meta$Mapping[i])]+Meta$Area.trans[i]
-	
+
+ 	#redo statistics/matrices needed for regression parameter updates -  for sampled cells only
+ 	XpXinv.pois=vector('list',Meta$n.species)
+ 	XpXinvXp.pois=XpXinv.pois
+ 	for(isp in 1:Meta$n.species){
+ 	  XpXinv.pois[[isp]]=solve(crossprod(DM.hab.pois[[isp]][Sampled,]))
+ 	  XpXinvXp.pois[[isp]]=XpXinv.pois[[isp]]%*%t(DM.hab.pois[[isp]][Sampled,])
+ 	}
+ 	
+ 	if(Meta$ZIP){
+ 	  XpXinv.bern=vector('list',Meta$n.species)
+ 	  XpXinvXp.bern=XpXinv.bern
+ 	  for(isp in 1:Meta$n.species){
+ 	    XpXinv.bern[[isp]]=solve(crossprod(DM.hab.bern[[isp]][Sampled,]))
+ 	    XpXinvXp.bern[[isp]]=XpXinv.bern[[isp]]%*%t(DM.hab.bern[[isp]][Sampled,])
+ 	  }
+ 	}   
+   
 	#initialize MCMC, Acceptance rate matrices
 	mcmc.length=(Control$iter-Control$burnin)/Control$thin
   MCMC=list(Psi=array(0,dim=c(dim(Psi)[1:2],mcmc.length)),N.tot=matrix(0,Meta$n.species,mcmc.length),N=array(0,dim=c(Meta$n.species,mcmc.length,Meta$S)),G=array(0,dim=c(Meta$n.species,mcmc.length,Meta$S)),Hab.pois=array(0,dim=c(Meta$n.species,mcmc.length,ncol(Par$hab.pois))),tau.eta.pois=matrix(0,Meta$n.species,mcmc.length),tau.nu=matrix(0,Meta$n.species,mcmc.length),Cov.par=array(0,dim=c(Meta$n.species,mcmc.length,length(Par$Cov.par[1,,]))))
@@ -267,12 +284,12 @@ mcmc_boss<-function(Par,Dat,Psi,cur.iter,adapt,Control,DM.hab.pois,DM.hab.bern=N
   Dat2[,"Species"]=factor(Dat2[,"Species"],levels=c(1:Meta$n.species))  
 	
 	PROFILE=FALSE  #outputs time associated with updating different groups of parameters
-	DEBUG=FALSE
+	DEBUG=TRUE
 	if(DEBUG){
     #set initial values as in "spatpred" GLMM for comparison
-    Which.pos=which(G.transect[1,]>0)
+    Which.pos=which(Meta$G.transect[1,]>0)
     Offset=Meta$Area.hab[Mapping]*Sampled.area.by.strata
-    Par$Nu[1,Mapping[Which.pos]]=log(G.transect[1,Which.pos]/Offset[Which.pos])
+    Par$Nu[1,Mapping[Which.pos]]=log(Meta$G.transect[1,Which.pos]/Offset[Which.pos])
     Par$Nu[1,-Mapping[Which.pos]]=min(Par$Nu[1,Mapping[Which.pos]])
     Par$hab.pois[1,1]=mean(Par$Nu)
     Par$tau.eta.pois=100
@@ -307,17 +324,16 @@ mcmc_boss<-function(Par,Dat,Psi,cur.iter,adapt,Control,DM.hab.pois,DM.hab.bern=N
 		  G.sampled=rep(0,n.unique) #total number of groups currently in each sampled strata
 		  for(i in 1:Meta$n.transects)G.sampled[Sampled==Meta$Mapping[i]]=G.sampled[Sampled==Meta$Mapping[i]]+Meta$G.transect[isp,i]
 		  Cur.thin=get_thin(Meta$Thin,Thin.pl,isp,thin.pl)
-      for(i in 1:n.unique){  #could be vectorized!
-        if(Z[isp,Sampled[i]]==1){
-		      prop=Par$Nu[isp,Sampled[i]]+runif(1,-Control$MH.nu[isp,i],Control$MH.nu[isp,i])				
-		      old.post=dnorm(Par$Nu[isp,Sampled[i]],Mu[Sampled[i]],1/sqrt(Par$tau.nu[isp]),log=TRUE)+dpois(G.sampled[i],Sampled.area.by.strata[i]*exp(Par$Nu[isp,Sampled[i]])*Meta$Area.hab[Sampled[i]]*Cur.thin[i],log=TRUE)
-		      new.post=dnorm(prop,Mu[Sampled[i]],1/sqrt(Par$tau.nu[isp]),log=TRUE)+dpois(G.sampled[i],Sampled.area.by.strata[i]*exp(prop)*Meta$Area.hab[Sampled[i]]*Cur.thin[i],log=TRUE)
-		      if(runif(1)<exp(new.post-old.post)){
-		        Par$Nu[isp,Sampled[i]]=prop
-		        Accept$Nu[isp,i]=Accept$Nu[isp,i]+1
-		      }
-        }
-		  }
+      Which.Z.1=which(Z[isp,Sampled]==1)
+      n=length(Which.Z.1)
+		  prop=Par$Nu[isp,Sampled[Which.Z.1]]+runif(n,-Control$MH.nu[isp,Sampled[Which.Z.1]],Control$MH.nu[isp,Sampled[Which.Z.1]])				
+		  old.post=dnorm(Par$Nu[isp,Sampled[Which.Z.1]],Mu[Sampled[Which.Z.1]],1/sqrt(Par$tau.nu[isp]),log=TRUE)+dpois(G.sampled[Which.Z.1],Sampled.area.by.strata[Which.Z.1]*exp(Par$Nu[isp,Sampled[Which.Z.1]])*Meta$Area.hab[Sampled[Which.Z.1]]*Cur.thin[Which.Z.1],log=TRUE)
+		  new.post=dnorm(prop,Mu[Sampled[Which.Z.1]],1/sqrt(Par$tau.nu[isp]),log=TRUE)+dpois(G.sampled[Which.Z.1],Sampled.area.by.strata[Which.Z.1]*exp(prop)*Meta$Area.hab[Sampled[Which.Z.1]]*Cur.thin[Which.Z.1],log=TRUE)
+      I.accept=(runif(n)<exp(new.post-old.post))
+ 		  Par$Nu[isp,Sampled[Which.Z.1[I.accept==1]]]=prop[I.accept==1]
+		  Accept$Nu[isp,Which.Z.1]=Accept$Nu[isp,Which.Z.1]+I.accept
+		
+
 		
 			#2) simulate nu for areas not sampled
 			Par$Nu[isp,-Sampled]=rnorm(Meta$S-n.unique,Mu[-Sampled],1/sqrt(Par$tau.nu[isp]))
@@ -388,11 +404,10 @@ mcmc_boss<-function(Par,Dat,Psi,cur.iter,adapt,Control,DM.hab.pois,DM.hab.bern=N
 				st=Sys.time()
 			}
 
-		  if(DEBUG==FALSE){
 		    #update Betas for habitat relationships
-		    Par$hab.pois[isp,1:Meta$N.hab.pois.par[isp]]=rmvnorm(1,XpXinvXp.pois[[isp]]%*%(Par$Nu[isp,]-Par$Eta.pois[isp,]),XpXinv.pois[[isp]]/(Par$tau.nu[isp]+Prior.pars$beta.tau))
-		    if(Meta$ZIP)Par$hab.bern[isp,1:Meta$N.hab.bern.par[isp]]=rmvnorm(1,XpXinvXp.bern[[isp]]%*%(Z.tilde[isp,]-Par$Eta.bern[isp,]),XpXinv.bern[[isp]]/(1+Prior.pars$beta.tau))
-		  }
+		  Par$hab.pois[isp,1:Meta$N.hab.pois.par[isp]]=rmvnorm(1,XpXinvXp.pois[[isp]]%*%(Par$Nu[isp,Sampled]-Par$Eta.pois[isp,Sampled]),XpXinv.pois[[isp]]/(Par$tau.nu[isp]+Prior.pars$beta.tau))
+		  if(Meta$ZIP)Par$hab.bern[isp,1:Meta$N.hab.bern.par[isp]]=rmvnorm(1,XpXinvXp.bern[[isp]]%*%(Z.tilde[isp,Sampled]-Par$Eta.bern[isp,Sampled]),XpXinv.bern[[isp]]/(1+Prior.pars$beta.tau))
+
 		  
 			#translate to lambda scale 
       Lambda[isp,]=exp(Par$Nu[isp,])*Meta$Area.hab  
