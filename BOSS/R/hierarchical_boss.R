@@ -271,7 +271,7 @@ hierarchical_boss<-function(Dat,Adj,Area.hab=1,Mapping,Area.trans,DayHour,Thin,P
 	Q=-Adj
 	diag(Q)=apply(Adj,2,'sum')
 	Q=Matrix(Q)	
-
+  
 	Meta=list(n.transects=n.transects,n.species=n.species,S=S,spat.ind=spat.ind,Area.hab=Area.hab,Area.trans=Area.trans,
       DayHour=DayHour,Thin=Thin,Prop.photo=Prop.photo,Adj=Adj,Mapping=Mapping,Covered.area=Covered.area,
 			factor.ind=factor.ind,Levels=Levels,misID=misID,

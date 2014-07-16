@@ -253,4 +253,12 @@ plot_covar<-function(DM,MCMC,Vars,n.species,n.points=20,Sp.names,const.tau=NULL,
   myPlot
 }
 
+#' function to sample species using apply
+#' @param probability weights for selecting each species
+#' @param n.species number of species to sample from
+#' @return A sampled species value
+#' @export
+#' @keywords species classification
+#' @author Paul B. Conn
+sample_species<-function(probs,n.species)sample(c(1:n.species),1,prob=probs)
 

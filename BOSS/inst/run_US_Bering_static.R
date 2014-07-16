@@ -315,10 +315,10 @@ Cov.prior.pdf[,1]="pois1"  #model group size as a zero truncated poisson
 Cov.prior.n=matrix(2,n.species,1)
 fix.tau.nu=TRUE
 srr=TRUE
-srr.tol=0.9
+srr.tol=0.8
 grps=TRUE
 post.loss=TRUE 
-Control=list(iter=600000,burnin=100000,thin=250,MH.nu=matrix(.2,n.species,S),adapt=400)
+Control=list(iter=600000,burnin=100000,thin=250,MH.nu=matrix(.2,n.species,S),adapt=1000)
 #hab.pois=matrix(0,n.species,2) #covariates are intercept, index
 #hab.pois[,1]=log(Sim$G.tot/S+10) #start 'near' true value
 #hab.bern=matrix(0,n.species,1)
@@ -336,7 +336,7 @@ adapt=TRUE
 set.seed(8327329)   #chain1
 Out=hierarchical_boss(Dat=Dat,Adj=Adj,Area.hab=Area.hab,Mapping=Mapping,Area.trans=Area.trans,DayHour=DayHour,Thin=Thin,Prop.photo=Prop.photo,Hab.cov=Hab.cov,Obs.cov=Obs.cov,n.obs.cov=n.obs.cov,Hab.pois.formula=Hab.pois.formula,Hab.bern.formula=Hab.bern.formula,Cov.prior.pdf=Cov.prior.pdf,Cov.prior.parms=Cov.prior.parms,Cov.prior.fixed=Cov.prior.fixed,Cov.prior.n=Cov.prior.n,ZIP=ZIP,spat.ind=spat.ind,fix.tau.nu=fix.tau.nu,srr=srr,srr.tol=srr.tol,Inits=Inits,grps=grps,n.species=n.species,Control=Control,adapt=adapt,Prior.pars=Prior.pars,Psi=Psi,post.loss=post.loss)
 
-save(Out,file='USBering_spat0overd0.Rdat')
+save(Out,file='USBering_spat1overd1.Rdat')
 
 png('ice_eff2.png')
 plot_covar(DM=Out$DM.hab.pois,MCMC=Out$MCMC,Vars=c("ice_conc"),n.species=n.species,n.points=20,Sp.names=c("Bearded","Ribbon","Ringed","Spotted","Other"),const.tau=100,bern=FALSE)

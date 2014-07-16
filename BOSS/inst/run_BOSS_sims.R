@@ -80,7 +80,7 @@
 	srr.tol=50
 	grps=TRUE
   post.loss=FALSE 
-  Control=list(iter=600000,burnin=100000,thin=100,MH.nu=matrix(.2,n.species,S),adapt=400)
+  Control=list(iter=400000,burnin=100000,thin=100,MH.nu=matrix(.2,n.species,S),adapt=400,species.optim=TRUE)
   hab.pois=matrix(0,n.species,4) #covariates are intercept, index
 	hab.pois[,1]=log(Sim$G.tot/S+10) #start 'near' true value
   #hab.bern=matrix(0,n.species,1)

@@ -27,6 +27,7 @@
 #'	"adapt": if adapt==TRUE, this gives the number of additional MCMC iterations should be performed to adapt MCMC proposals to optimal 
 #' 				ranges prior to final MCMC run; 
 #'	"MH.nu": MH tuning parameter for Nu parameters (Langevin-Hastings multivariate update);
+#'  "species.optim": if TRUE, species updates are optimized for discrete covariates (only useful if a small # of levels of e.g. group size)
 #' @param DM.hab.pois	A design matrix for the Poisson model for abundance intensity (log scale)
 #' @param DM.hab.bern If Meta$ZIP=TRUE, a design matrix for the Bernoulli zero model (probit scale)
 #' @param Q			An inverse precision matrix for the spatial ICAR process
@@ -88,6 +89,7 @@ mcmc_boss<-function(Par,Dat,Psi,cur.iter,adapt,Control,DM.hab.pois,DM.hab.bern=N
   thin.pl=sample(c(1:dim(Meta$Thin)[4]),1)
 	grp.pl=NULL
 	if(Meta$grps==TRUE)grp.pl=which(colnames(Dat)=="Group")
+  if(is.null(Control$species.optim))Control$species.optim=FALSE
   
 	
 	#initialize G.obs (number of groups observed per transect)
@@ -246,7 +248,7 @@ mcmc_boss<-function(Par,Dat,Psi,cur.iter,adapt,Control,DM.hab.pois,DM.hab.bern=N
 	n.no.photo=length(Which.no.photo) 
   Index.misID=c(1:n.misID.updates)
   Index.photo=c(1:n.photo)
-  
+    
   #establish framework for individual covariate contributions to species updates (all possible combos of individual covariates)
   if(Meta$n.ind.cov>0){
     if(Meta$n.ind.cov==1)Cov.pointer=matrix(unique(Dat[Which.photo,4+n.obs.cov+1]),length(unique(Dat[Which.photo,4+n.obs.cov+1])),1)
@@ -265,6 +267,7 @@ mcmc_boss<-function(Par,Dat,Psi,cur.iter,adapt,Control,DM.hab.pois,DM.hab.bern=N
     }
     Cov.pl=apply(matrix(Dat[Which.photo,(4+n.obs.cov+1):(4+n.obs.cov+Meta$n.ind.cov)],ncol=Meta$n.ind.cov),1,'get_place',Pointer=Cov.pointer)      
   }
+  if(Control$species.optim==TRUE)Species.cell.probs=matrix(0,n.misID.updates,n.species)
      
 
 	if(Meta$post.loss){ #calculate observed counts of different detection types, initialize prediction arrays
@@ -284,7 +287,7 @@ mcmc_boss<-function(Par,Dat,Psi,cur.iter,adapt,Control,DM.hab.pois,DM.hab.bern=N
   Dat2[,"Species"]=factor(Dat2[,"Species"],levels=c(1:Meta$n.species))  
 	
 	PROFILE=FALSE  #outputs time associated with updating different groups of parameters
-	DEBUG=TRUE
+	DEBUG=FALSE
 	if(DEBUG){
     #set initial values as in "spatpred" GLMM for comparison
     Which.pos=which(Meta$G.transect[1,]>0)
@@ -327,12 +330,13 @@ mcmc_boss<-function(Par,Dat,Psi,cur.iter,adapt,Control,DM.hab.pois,DM.hab.bern=N
       Which.Z.1=which(Z[isp,Sampled]==1)
       n=length(Which.Z.1)
 		  prop=Par$Nu[isp,Sampled[Which.Z.1]]+runif(n,-Control$MH.nu[isp,Sampled[Which.Z.1]],Control$MH.nu[isp,Sampled[Which.Z.1]])				
-		  old.post=dnorm(Par$Nu[isp,Sampled[Which.Z.1]],Mu[Sampled[Which.Z.1]],1/sqrt(Par$tau.nu[isp]),log=TRUE)+dpois(G.sampled[Which.Z.1],Sampled.area.by.strata[Which.Z.1]*exp(Par$Nu[isp,Sampled[Which.Z.1]])*Meta$Area.hab[Sampled[Which.Z.1]]*Cur.thin[Which.Z.1],log=TRUE)
+		  #cat(paste("Nu ",Par$Nu[isp,Sampled[Which.Z.1]],'\n'))
+      #cat(paste("Mu ",Mu[Sampled[Which.Z.1]],'\n'))
+      old.post=dnorm(Par$Nu[isp,Sampled[Which.Z.1]],Mu[Sampled[Which.Z.1]],1/sqrt(Par$tau.nu[isp]),log=TRUE)+dpois(G.sampled[Which.Z.1],Sampled.area.by.strata[Which.Z.1]*exp(Par$Nu[isp,Sampled[Which.Z.1]])*Meta$Area.hab[Sampled[Which.Z.1]]*Cur.thin[Which.Z.1],log=TRUE)
 		  new.post=dnorm(prop,Mu[Sampled[Which.Z.1]],1/sqrt(Par$tau.nu[isp]),log=TRUE)+dpois(G.sampled[Which.Z.1],Sampled.area.by.strata[Which.Z.1]*exp(prop)*Meta$Area.hab[Sampled[Which.Z.1]]*Cur.thin[Which.Z.1],log=TRUE)
       I.accept=(runif(n)<exp(new.post-old.post))
- 		  Par$Nu[isp,Sampled[Which.Z.1[I.accept==1]]]=prop[I.accept==1]
+      if(sum(I.accept)>0)Par$Nu[isp,Sampled[Which.Z.1[I.accept==1]]]=prop[I.accept==1]
 		  Accept$Nu[isp,Which.Z.1]=Accept$Nu[isp,Which.Z.1]+I.accept
-		
 
 		
 			#2) simulate nu for areas not sampled
@@ -452,26 +456,39 @@ mcmc_boss<-function(Par,Dat,Psi,cur.iter,adapt,Control,DM.hab.pois,DM.hab.bern=N
 #       print(Lambda.trans)
 		#     }
 		##### update true species for observed animals ######
-		Which.sampled=sample(n.photo,n.misID.updates) #replace needs to be false here or there's issues with using Old.sp
-		Old.sp=Dat[Which.photo[Which.sampled],"Species"]
-		Prop.sp=sample(c(1:Meta$n.species),n.misID.updates,replace=TRUE)
-		Cur.obs=Dat[Which.photo[Which.sampled],"Obs"]
-		#covariate contributions
-		MH=sapply(Index.misID,"get_mat_entries",Mat=Cov.logL,Row=Cov.pl[Which.sampled],Col=Prop.sp)-sapply(Index.misID,"get_mat_entries",Mat=Cov.logL,Row=Cov.pl[Which.sampled],Col=Old.sp)
-		#confusion matrix contributions
-		if(Meta$misID)MH=MH+log(sapply(Index.misID,"get_mat_entries",Mat=Par$Psi,Row=Prop.sp,Col=Dat[Which.photo[Which.sampled],"Obs"]))-log(sapply(Index.misID,"get_mat_entries",Mat=Par$Psi,Row=Dat[Which.photo[Which.sampled],"Species"],Col=Dat[Which.photo[Which.sampled],"Obs"]))
-		#Poisson abundance model contributions (new state)
-		MH=MH+log(sapply(Index.misID,"get_mat_entries",Mat=Lambda.trans,Row=Prop.sp,Col=Dat[Which.photo[Which.sampled],"Transect"]))
-		Rsamp=runif(n.misID.updates)
-		for(isamp in 1:n.misID.updates){
-		  mh=MH[isamp]-log(Lambda.trans[Dat[Which.photo[Which.sampled[isamp]],"Species"],Dat[Which.photo[Which.sampled[isamp]],"Transect"]])
-		  if(Rsamp[isamp]<exp(mh)){
-		    Meta$G.transect[Old.sp[isamp],Dat[Which.photo[Which.sampled[isamp]],"Transect"]]=Meta$G.transect[Old.sp[isamp],Dat[Which.photo[Which.sampled[isamp]],"Transect"]]-1
-		    Meta$G.transect[Prop.sp[isamp],Dat[Which.photo[Which.sampled[isamp]],"Transect"]]=Meta$G.transect[Prop.sp[isamp],Dat[Which.photo[Which.sampled[isamp]],"Transect"]]+1
-		    Dat[Which.photo[Which.sampled[isamp]],"Species"]=Prop.sp[isamp]
-		  }
-		}
- 		
+    if(Meta$misID & Control$species.optim==FALSE){
+      Which.sampled=sample(n.photo,n.misID.updates) #replace needs to be false here or there's issues with using Old.sp
+      Old.sp=Dat[Which.photo[Which.sampled],"Species"]
+      Prop.sp=sample(c(1:Meta$n.species),n.misID.updates,replace=TRUE)
+      Cur.obs=Dat[Which.photo[Which.sampled],"Obs"]
+      #covariate contributions
+      MH=sapply(Index.misID,"get_mat_entries",Mat=Cov.logL,Row=Cov.pl[Which.sampled],Col=Prop.sp)-sapply(Index.misID,"get_mat_entries",Mat=Cov.logL,Row=Cov.pl[Which.sampled],Col=Old.sp)
+      #confusion matrix contributions
+      if(Meta$misID)MH=MH+log(sapply(Index.misID,"get_mat_entries",Mat=Par$Psi,Row=Prop.sp,Col=Dat[Which.photo[Which.sampled],"Obs"]))-log(sapply(Index.misID,"get_mat_entries",Mat=Par$Psi,Row=Dat[Which.photo[Which.sampled],"Species"],Col=Dat[Which.photo[Which.sampled],"Obs"]))
+      #Poisson abundance model contributions (new state)
+      MH=MH+log(sapply(Index.misID,"get_mat_entries",Mat=Lambda.trans,Row=Prop.sp,Col=Dat[Which.photo[Which.sampled],"Transect"]))
+      Rsamp=runif(n.misID.updates)
+      for(isamp in 1:n.misID.updates){
+        mh=MH[isamp]-log(Lambda.trans[Dat[Which.photo[Which.sampled[isamp]],"Species"],Dat[Which.photo[Which.sampled[isamp]],"Transect"]])
+        if(Rsamp[isamp]<exp(mh)){
+          Meta$G.transect[Old.sp[isamp],Dat[Which.photo[Which.sampled[isamp]],"Transect"]]=Meta$G.transect[Old.sp[isamp],Dat[Which.photo[Which.sampled[isamp]],"Transect"]]-1
+          Meta$G.transect[Prop.sp[isamp],Dat[Which.photo[Which.sampled[isamp]],"Transect"]]=Meta$G.transect[Prop.sp[isamp],Dat[Which.photo[Which.sampled[isamp]],"Transect"]]+1
+          Dat[Which.photo[Which.sampled[isamp]],"Species"]=Prop.sp[isamp]
+        }
+      }
+    }
+    
+    if(Meta$misID & Control$species.optim==TRUE){
+      if(Meta$n.ind.cov>1)paste("ERROR: Control$species.optim==TRUE currently only implemented for one covariate (group size)")
+      Which.sampled=sample(n.photo,n.misID.updates) #replace needs to be false here or there's issues with using Old.sp
+      #lambda contribution
+      Species.cell.probs=Lambda[,Mapping[Dat[Which.photo[Which.sampled],"Transect"]]]
+      #confusion matrix contributions
+      Species.cell.probs=Species.cell.probs*Par$Psi[,Dat[Which.photo[Which.sampled],"Obs"]]
+      #covariate contributions: GROUP ONLY RIGHT NOW
+      Species.cell.probs=Species.cell.probs*t(exp(Cov.logL))[,Dat[Which.photo[Which.sampled],"Group"]]
+      Dat[Which.photo[Which.sampled],"Species"]=apply(Species.cell.probs,2,"sample_species",n.species=n.species)
+    }		
 		if(PROFILE==TRUE){
 		  cat(paste("True species: ", (Sys.time()-st),'\n'))
 		  st=Sys.time()
@@ -481,6 +498,7 @@ mcmc_boss<-function(Par,Dat,Psi,cur.iter,adapt,Control,DM.hab.pois,DM.hab.bern=N
 		########## recalculate abundance totals
     Dat2[,"Group"]=Dat[,"Group"]
     Dat2[,"Species"]=factor(Dat[,"Species"],levels=c(1:Meta$n.species))
+    Meta$G.transect=xtabs(~Species+Transect,data=Dat2)  #recalculate number of groups per species/transect combo
     Meta$N.transect=xtabs(Group~Species+Transect,data=Dat2)
 
     for(isp in 1:Meta$n.species){
