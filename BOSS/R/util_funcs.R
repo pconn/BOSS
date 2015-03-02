@@ -41,9 +41,19 @@ generate_inits_BOSS<-function(DM.hab.pois,DM.hab.bern,N.hab.pois.par,N.hab.bern.
     for(i in 1:sum(I.error))Par$G[Mapping[Which.error[i]]]=Par$G[Mapping[Which.error[i]]]+G.transect[Which.error[i]]
   }
   for(isp in 1:n.species)Par$N[isp,]=Par$G[isp,]+rpois(n.cells,grp.mean[isp]*Par$G[isp,])
-  if(spat.ind==1){
-    Par$Eta.bern=0*Par$Eta.bern
-    Par$Eta.pois=0*Par$Eta.pois
+  if(length(spat.ind)==1){
+    if(spat.ind==1){
+      Par$Eta.bern=0*Par$Eta.bern
+      Par$Eta.pois=0*Par$Eta.pois
+    }
+  }
+  else{
+    for(isp in 1:n.species){
+      if(spat.ind[isp]==1){
+        if(i.hurdle==1)Par$Eta.bern[isp,]=0
+        Par$Eta.pois[isp,]=0
+      }
+    }
   }
   Par
 }
@@ -85,11 +95,12 @@ get_conf_entries<-function(tmp,Conf,List.num,Row,Col)Conf[[List.num[tmp]]][Row[t
 #' @author Paul B. Conn
 convert.BOSS.to.mcmc<-function(MCMC,N.hab.pois.par,N.hab.bern.par,Cov.par.n,Hab.pois.names,Hab.bern.names,Det.names,Cov.names,fix.tau.nu=FALSE,spat.ind=TRUE,point.ind=TRUE){
   require(coda)
+  if(min(spat.ind)==0)s.i=0
   i.ZIP=!is.na(N.hab.bern.par)[1]
   n.species=nrow(MCMC$Hab.pois)
   n.iter=length(MCMC$Hab.pois[1,,1])
-  n.col=n.species*2+sum(N.hab.pois.par)+(1-spat.ind)*n.species+(1-fix.tau.nu)*n.species+sum(Cov.par.n)*n.species
-  if(i.ZIP)n.col=n.col+sum(N.hab.bern.par)+(1-spat.ind)*n.species #for ZIP model
+  n.col=n.species*2+sum(N.hab.pois.par)+(1-s.i)*n.species+(1-fix.tau.nu)*n.species+sum(Cov.par.n)*n.species+1
+  if(i.ZIP)n.col=n.col+sum(N.hab.bern.par)+(1-s.i)*n.species #for ZIP model
   n.cells=dim(MCMC$G)[3]
   Mat=matrix(0,n.iter,n.col)
   Mat[,1:n.species]=t(MCMC$N.tot)
@@ -112,12 +123,12 @@ convert.BOSS.to.mcmc<-function(MCMC,N.hab.pois.par,N.hab.bern.par,Cov.par.n,Hab.
       counter=counter+sum(N.hab.bern.par[isp])
     }   
   }
-  if(spat.ind==FALSE){
+  if(s.i==FALSE){
     Mat[,(counter+1):(counter+n.species)]=t(MCMC$tau.eta.pois)
     col.names=c(col.names,paste("tau.eta.pois.sp",c(1:n.species),sep=''))
     counter=counter+n.species
   }
-  if(spat.ind==FALSE & i.ZIP){
+  if(s.i==FALSE & i.ZIP){
     Mat[,(counter+1):(counter+n.species)]=t(MCMC$tau.eta.bern)
     col.names=c(col.names,paste("tau.eta.bern.sp",c(1:n.species),sep=''))
     counter=counter+n.species
@@ -137,6 +148,8 @@ convert.BOSS.to.mcmc<-function(MCMC,N.hab.pois.par,N.hab.bern.par,Cov.par.n,Hab.
       }
     }
   }
+  Mat[,counter+1]=MCMC$Thin.pl
+  col.names=c(col.names,"Thin.index")
   colnames(Mat)=col.names
   Mat=mcmc(Mat)
   Mat

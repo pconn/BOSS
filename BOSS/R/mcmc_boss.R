@@ -41,7 +41,7 @@
 #' 	"n.transects"	Number of transects
 #'  "n.species"     Number of species
 #' 	"S"				Number of strata cells
-#'  "spat.ind"		Indicator for spatial dependence
+#'  "spat.ind"		Indicator for spatial dependence (if > 1, provide options for each species)
 #'  "Area.hab"		Vector giving relative area covered by each strata
 #'  "Area.trans"	Vector giving fraction of area of relevant strata covered by each transect
 #'  "DayHour" A (n.transect X 2) matrix providing row and column entries into the Thin array. Each row corresponds to an entry in Mapping
@@ -90,7 +90,8 @@ mcmc_boss<-function(Par,Dat,Psi,cur.iter,adapt,Control,DM.hab.pois,DM.hab.bern=N
 	grp.pl=NULL
 	if(Meta$grps==TRUE)grp.pl=which(colnames(Dat)=="Group")
   if(is.null(Control$species.optim))Control$species.optim=FALSE
-  
+  Spat.ind=Meta$spat.ind
+  if(length(Meta$spat.ind)==1)Spat.ind=rep(Meta$spat.ind,Meta$n.species)
 	
 	#initialize G.obs (number of groups observed per transect)
   n.obs=nrow(Dat)
@@ -133,7 +134,6 @@ mcmc_boss<-function(Par,Dat,Psi,cur.iter,adapt,Control,DM.hab.pois,DM.hab.bern=N
 		Lambda.trans[isp,]=Lambda[isp,Meta$Mapping]*Meta$Area.trans*get_thin(Meta$Thin,Thin.pl,isp,thin.pl)
 	}
 	grp.lam=rep(0,Meta$n.species)
-	
 	
 	#initialize statistics/matrices needed for MCMC updates - start with all cells (these redefined for sampled cells below)
 	XpXinv.pois=vector('list',Meta$n.species)
@@ -204,6 +204,7 @@ mcmc_boss<-function(Par,Dat,Psi,cur.iter,adapt,Control,DM.hab.pois,DM.hab.bern=N
 	}
   
   
+  
 	Sampled=unique(Meta$Mapping)
 	n.unique=length(Sampled)  
  	DM.hab.pois.sampled=DM.hab.pois
@@ -230,7 +231,7 @@ mcmc_boss<-function(Par,Dat,Psi,cur.iter,adapt,Control,DM.hab.pois,DM.hab.bern=N
    
 	#initialize MCMC, Acceptance rate matrices
 	mcmc.length=(Control$iter-Control$burnin)/Control$thin
-  MCMC=list(Psi=array(0,dim=c(dim(Psi)[1:2],mcmc.length)),N.tot=matrix(0,Meta$n.species,mcmc.length),N=array(0,dim=c(Meta$n.species,mcmc.length,Meta$S)),G=array(0,dim=c(Meta$n.species,mcmc.length,Meta$S)),Hab.pois=array(0,dim=c(Meta$n.species,mcmc.length,ncol(Par$hab.pois))),tau.eta.pois=matrix(0,Meta$n.species,mcmc.length),tau.nu=matrix(0,Meta$n.species,mcmc.length),Cov.par=array(0,dim=c(Meta$n.species,mcmc.length,length(Par$Cov.par[1,,]))))
+  MCMC=list(Psi=array(0,dim=c(dim(Psi)[1:2],mcmc.length)),Thin.pl=rep(0,mcmc.length),N.tot=matrix(0,Meta$n.species,mcmc.length),N=array(0,dim=c(Meta$n.species,mcmc.length,Meta$S)),G=array(0,dim=c(Meta$n.species,mcmc.length,Meta$S)),Hab.pois=array(0,dim=c(Meta$n.species,mcmc.length,ncol(Par$hab.pois))),tau.eta.pois=matrix(0,Meta$n.species,mcmc.length),tau.nu=matrix(0,Meta$n.species,mcmc.length),Cov.par=array(0,dim=c(Meta$n.species,mcmc.length,length(Par$Cov.par[1,,]))))
   if(Meta$ZIP){
     MCMC$Hab.bern=array(0,dim=c(Meta$n.species,mcmc.length,ncol(Par$hab.bern)))
     MCMC$tau.eta.bern=matrix(0,Meta$n.species,mcmc.length)
@@ -248,7 +249,9 @@ mcmc_boss<-function(Par,Dat,Psi,cur.iter,adapt,Control,DM.hab.pois,DM.hab.bern=N
 	n.no.photo=length(Which.no.photo) 
   Index.misID=c(1:n.misID.updates)
   Index.photo=c(1:n.photo)
-    
+
+   
+  
   #establish framework for individual covariate contributions to species updates (all possible combos of individual covariates)
   if(Meta$n.ind.cov>0){
     if(Meta$n.ind.cov==1)Cov.pointer=matrix(unique(Dat[Which.photo,4+n.obs.cov+1]),length(unique(Dat[Which.photo,4+n.obs.cov+1])),1)
@@ -268,7 +271,7 @@ mcmc_boss<-function(Par,Dat,Psi,cur.iter,adapt,Control,DM.hab.pois,DM.hab.bern=N
     Cov.pl=apply(matrix(Dat[Which.photo,(4+n.obs.cov+1):(4+n.obs.cov+Meta$n.ind.cov)],ncol=Meta$n.ind.cov),1,'get_place',Pointer=Cov.pointer)      
   }
   if(Control$species.optim==TRUE)Species.cell.probs=matrix(0,n.misID.updates,n.species)
-     
+  
 
 	if(Meta$post.loss){ #calculate observed counts of different detection types, initialize prediction arrays
     Obs.det=matrix(0,Meta$n.transects,n.obs.types+1) #col=n.obs.types+1 is for hotspots w/o accompanying photographs
@@ -301,6 +304,7 @@ mcmc_boss<-function(Par,Dat,Psi,cur.iter,adapt,Control,DM.hab.pois,DM.hab.bern=N
     set.seed(12345)
 	}
 	st <- Sys.time()
+  
 	##################################################
 	############   Begin MCMC Algorithm ##############
 	##################################################
@@ -352,9 +356,8 @@ mcmc_boss<-function(Par,Dat,Psi,cur.iter,adapt,Control,DM.hab.pois,DM.hab.bern=N
 		    st=Sys.time()
 		  } 
 
-
       #update spatial random effects
-			if(Meta$spat.ind==FALSE){
+			if(Spat.ind[isp]==FALSE){
 				if(Meta$srr==FALSE){
 					#update eta parameters (spatial random effects)
 					V.eta.inv <- Par$tau.nu[isp]*diag(Meta$S) + Par$tau.eta.pois[isp]*Q
@@ -530,7 +533,7 @@ mcmc_boss<-function(Par,Dat,Psi,cur.iter,adapt,Control,DM.hab.pois,DM.hab.bern=N
       New.thin=get_thin(Meta$Thin,Thin.pl,isp,new.ind)
       Cur.Z=Z[Sampled]
       old.post=old.post+sum(dpois(G.sampled[Cur.Z==1],Lambda.trans[isp,Cur.Z==1],log=TRUE))
-      new.post=old.post+sum(dpois(G.sampled[Cur.Z==1],Lambda.trans[isp,Cur.Z==1]*New.thin[Cur.Z==1]/Cur.thin[Cur.Z==1],log=TRUE))
+      new.post=new.post+sum(dpois(G.sampled[Cur.Z==1],Lambda.trans[isp,Cur.Z==1]*New.thin[Cur.Z==1]/Cur.thin[Cur.Z==1],log=TRUE))
     }
     if(runif(1)<exp(new.post-old.post)){
       Accept$thin=Accept$thin+1
@@ -608,6 +611,7 @@ mcmc_boss<-function(Par,Dat,Psi,cur.iter,adapt,Control,DM.hab.pois,DM.hab.bern=N
 		
 		#store results if applicable
 		if(iiter>Control$burnin & iiter%%Control$thin==0){
+      MCMC$Thin.pl=thin.pl
       if(Meta$misID==TRUE)MCMC$Psi[,,(iiter-Control$burnin)/Control$thin]=Par$Psi
       for(isp in 1:Meta$n.species){
 				MCMC$G[isp,(iiter-Control$burnin)/Control$thin,]=Par$G[isp,]

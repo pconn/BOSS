@@ -10,12 +10,19 @@ load("c:/users/paul.conn/git/BOSS/BOSS/data/Effort_points.Rdat")
 #draw random sample of date-times from on effort flights
 effort_data=effort_data[-which(effort_data[["flightid"]]=="AeroFl10"),]  
 DT=as.POSIXlt(effort_data[["gps_dt"]])
-effort_data=effort_data[which(DT$mon==3 & DT$mday>20 & DT$mday<29),] #mon goes 0-11
+effort_data=effort_data[which(DT$mon==3 & DT$mday>20 & DT$mday<29),] #mon goes 0-11  ; BOSS paper
 DT.samp=sample(effort_data[["gps_dt"]],10000,replace=TRUE)
 DT.samp=as.POSIXlt(DT.samp)
 
 Day <- DT.samp$yday/365 
 Hour<-DT.samp$hour
+
+#for Mike's bearded seal request
+Day <- round(runif(10000,142.5,159.5))/365   #May 21 - June 6
+Hour <- round(runif(10000,20,29))  
+Hour[which(Hour>23)]=Hour[which(Hour>23)]-24
+           
+
 
 #ribbon seals
 RibbonFit <- rep(0,10000)

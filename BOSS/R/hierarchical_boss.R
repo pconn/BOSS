@@ -15,7 +15,7 @@
 #' @param Area.trans	A vector giving the effective area covered by each transect as fraction of total area in the strata it is located
 #' @param DayHour A (n.transect X 2) matrix providing row and column entries into the Thin array. Each row corresponds to an entry in Mapping
 #' @param Thin An (n.species X n.days X n.hours X n.iter) array providing n.iter posterior samples of the thinning parameters
-#' @param Prop.photo A vector giving the proportion of of the area sampled in each transect that is photographed
+#' @param Prop.photo A vector giving the proportion of of the area sampled in each transect that is photographed (only needed for posterior loss, GOF)
 #' @param n.species An integer giving the true number of species
 #' @param n.obs.cov	Number of observer covariates (e.g., visibility, etc.)
 #' @param Hab.cov	A data.frame object giving covariates thought to influence abundance intensity at strata level; column names index individual covariates
@@ -38,7 +38,7 @@
 #' @param Cov.prior.fixed  An indicator matrix specifying which (if any) individual covariate distributions should be fixed during estimation
 #' @param Cov.prior.n  An (# species X # indiv. covariates) matrix giving the number of parameters in each covariate pdf
 #' @param ZIP  If TRUE, estimate ZIP model for abundance that includes a Bernoulli model for zeros and a Poisson + 1 model for positive values (default is FALSE)
-#' @param spat.ind	If TRUE, assumes spatial independence (no spatial random effects on abundance intensity) default is FALSE
+#' @param spat.ind	If TRUE, assumes spatial independence (no spatial random effects on abundance intensity) default is FALSE.  A vector can be used to provide different answers for each species. 
 #' @param fix.tau.nu  If TRUE, fixes tau.nu during estimation (the value to fix it to can be provided in "Inits")
 #' @param srr  If TRUE, uses spatially retricted regression, where smoothing occurs on residuals and all spatial effects are orthogonal to the linear predictors (by default, analysis is limited to the highest 50 eigenvalues of the decomposition of the residual projection matrix to reduce computing time)
 #' @param srr.tol Threshold eigenvalue level for SRR; only eigenvectors with higher eigenvalues than srr.tol are included in SRR formulation (default is 0.5)
@@ -267,7 +267,7 @@ hierarchical_boss<-function(Dat,Adj,Area.hab=1,Mapping,Area.trans,DayHour,Thin,P
 			Covered.area[i]=sum(Area.trans[which(Mapping==i)])
 		}
 	}
-
+  
 	Q=-Adj
 	diag(Q)=apply(Adj,2,'sum')
 	Q=Matrix(Q)	
